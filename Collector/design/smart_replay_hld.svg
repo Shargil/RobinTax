@@ -1,0 +1,177 @@
+<svg width="100%" viewBox="0 0 680 1120" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Smart Replay — full HLD: record, replay, Claude Code skill, confidence scoring</title>
+<desc>Architecture diagram with install step, dev-time recording phase, and runtime replay phase including Claude Code MCP skill, permission prompts, DOM hash gate, confidence zones, and learning loop</desc>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <style>
+    text { font-family: "Anthropic Sans", -apple-system, "Segoe UI", sans-serif; }
+    .th  { font-size: 14px; font-weight: 500; fill: #2C2C2A; }
+    .ts  { font-size: 12px; font-weight: 400; fill: #5F5E5A; }
+    .th-teal { font-size: 14px; font-weight: 500; fill: #04342C; }
+    .ts-teal { font-size: 12px; font-weight: 400; fill: #0F6E56; }
+    .th-purple { font-size: 14px; font-weight: 500; fill: #26215C; }
+    .ts-purple { font-size: 12px; font-weight: 400; fill: #534AB7; }
+    .th-blue { font-size: 14px; font-weight: 500; fill: #042C53; }
+    .ts-blue { font-size: 12px; font-weight: 400; fill: #185FA5; }
+    .th-amber { font-size: 14px; font-weight: 500; fill: #412402; }
+    .ts-amber { font-size: 12px; font-weight: 400; fill: #854F0B; }
+    .th-green { font-size: 14px; font-weight: 500; fill: #173404; }
+    .ts-green { font-size: 12px; font-weight: 400; fill: #3B6D11; }
+    .th-coral { font-size: 14px; font-weight: 500; fill: #4A1B0C; }
+    .ts-coral { font-size: 12px; font-weight: 400; fill: #993C1D; }
+    .th-red { font-size: 14px; font-weight: 500; fill: #501313; }
+    .ts-red { font-size: 12px; font-weight: 400; fill: #A32D2D; }
+    .th-gray { font-size: 14px; font-weight: 500; fill: #2C2C2A; }
+    .ts-gray { font-size: 12px; font-weight: 400; fill: #5F5E5A; }
+    .arr { fill: none; stroke: #888780; stroke-width: 1.5; }
+    .leader { fill: none; stroke: #B4B2A9; stroke-width: 0.5; stroke-dasharray: 3 3; }
+    .phase-border { fill: none; stroke: #B4B2A9; stroke-width: 1; stroke-dasharray: 5 4; }
+  </style>
+</defs>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- INSTALL ONCE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<rect x="40" y="16" width="600" height="48" rx="10" class="phase-border"/>
+<text x="56" y="30" class="ts" fill="#B4B2A9">install once</text>
+<rect x="60" y="34" width="560" height="24" rx="6" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="340" y="46" text-anchor="middle" dominant-baseline="central" class="th-gray">claude mcp add smart-replay npx smart-replay-skill</text>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- PHASE 1: DEV TIME -->
+<!-- ══════════════════════════════════════════════════════ -->
+<rect x="40" y="76" width="600" height="298" rx="10" class="phase-border"/>
+<text x="56" y="92" class="ts" fill="#B4B2A9">① dev time — recording</text>
+
+<!-- Claude Code terminal (orchestrator) -->
+<rect x="60" y="100" width="560" height="50" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="340" y="119" text-anchor="middle" dominant-baseline="central" class="th-purple">Claude Code terminal</text>
+<text x="340" y="137" text-anchor="middle" dominant-baseline="central" class="ts-purple">> record gov.il "download monthly report"  →  calls tool: smart_replay.start_recording()</text>
+
+<line x1="340" y1="150" x2="340" y2="168" class="arr" marker-end="url(#arrow)"/>
+
+<!-- Permission prompt -->
+<rect x="190" y="168" width="300" height="38" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="340" y="181" text-anchor="middle" dominant-baseline="central" class="th-amber">Allow? (y/n)</text>
+<text x="340" y="197" text-anchor="middle" dominant-baseline="central" class="ts-amber">SmartReplay wants to attach to tab: gov.il</text>
+
+<line x1="340" y1="206" x2="340" y2="224" class="arr" marker-end="url(#arrow)" stroke="#1D9E75"/>
+
+<!-- Chrome + Playwriter extension -->
+<rect x="60" y="224" width="560" height="54" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="340" y="244" text-anchor="middle" dominant-baseline="central" class="th-teal">Chrome (logged-in) + Playwriter extension  (chrome.debugger → CDP)</text>
+<text x="340" y="261" text-anchor="middle" dominant-baseline="central" class="ts-teal">onMouseAction hook fires on every interaction → captures XPath · aria-ref · CSS selector · bounding box</text>
+
+<line x1="340" y1="278" x2="340" y2="296" class="arr" marker-end="url(#arrow)"/>
+
+<!-- Action store -->
+<rect x="60" y="296" width="560" height="64" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="340" y="315" text-anchor="middle" dominant-baseline="central" class="th-purple">Action store — actions/{site}.json</text>
+<text x="340" y="333" text-anchor="middle" dominant-baseline="central" class="ts-purple">{ site, intent, domHash, steps: [ { xpath, ariaRef, cssSelector, fallbackText, confidence, origin } ] }</text>
+<text x="340" y="350" text-anchor="middle" dominant-baseline="central" class="ts-purple">origin: "recorded" → 0.90  ·  "llm-healed" → 0.60  ·  "fuzzy-match" → 0.70</text>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- PHASE 2: RUNTIME -->
+<!-- ══════════════════════════════════════════════════════ -->
+<rect x="40" y="386" width="600" height="696" rx="10" class="phase-border"/>
+<text x="56" y="402" class="ts" fill="#B4B2A9">② runtime — replay  (all token usage inside Claude Code session — no separate API key)</text>
+
+<!-- Trigger -->
+<rect x="60" y="412" width="560" height="38" rx="8" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="340" y="431" text-anchor="middle" dominant-baseline="central" class="th-gray">Claude Code calls tool: smart_replay.replay(site, intent)  — user prompt or job scheduler</text>
+
+<line x1="340" y1="450" x2="340" y2="470" class="arr" marker-end="url(#arrow)"/>
+
+<!-- DOM HASH CHECK -->
+<rect x="170" y="470" width="340" height="50" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="340" y="489" text-anchor="middle" dominant-baseline="central" class="th-amber">DOM hash check</text>
+<text x="340" y="506" text-anchor="middle" dominant-baseline="central" class="ts-amber">fingerprint page landmarks → compare stored domHash → mismatch skips straight to LLM</text>
+
+<line x1="340" y1="520" x2="340" y2="540" class="arr" marker-end="url(#arrow)" stroke="#1D9E75"/>
+<text x="360" y="532" class="ts" fill="#1D9E75">hash ok</text>
+
+<!-- Hash mismatch path -->
+<path d="M512 495 L632 495 L632 768 L454 768" fill="none" stroke="#BA7517" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="645" y="632" text-anchor="middle" class="ts" fill="#BA7517" transform="rotate(90,645,632)">hash mismatch → skip to LLM</text>
+
+<!-- Replay engine -->
+<rect x="60" y="540" width="560" height="50" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="340" y="558" text-anchor="middle" dominant-baseline="central" class="th-blue">SmartReplay MCP skill — Playwriter CDP relay :19988</text>
+<text x="340" y="575" text-anchor="middle" dominant-baseline="central" class="ts-blue">executes cached steps via chrome.debugger → streams ✓ / ✗ status to terminal per step</text>
+
+<!-- Three outcome paths -->
+<line x1="155" y1="590" x2="110" y2="620" class="arr" marker-end="url(#arrow)" stroke="#1D9E75"/>
+<line x1="340" y1="590" x2="340" y2="620" class="arr" marker-end="url(#arrow)" stroke="#BA7517"/>
+<line x1="525" y1="590" x2="566" y2="620" class="arr" marker-end="url(#arrow)" stroke="#A32D2D"/>
+
+<!-- Cache hit -->
+<rect x="48" y="620" width="128" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="112" y="640" text-anchor="middle" dominant-baseline="central" class="th-teal">Cache hit ✓</text>
+<text x="112" y="658" text-anchor="middle" dominant-baseline="central" class="ts-teal">zero LLM cost</text>
+
+<!-- Selector mismatch -->
+<rect x="206" y="620" width="268" height="52" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="340" y="638" text-anchor="middle" dominant-baseline="central" class="th-amber">Selector mismatch</text>
+<text x="340" y="655" text-anchor="middle" dominant-baseline="central" class="ts-amber">try: XPath → aria-ref → text content → fuzzy CSS</text>
+
+<!-- Full miss -->
+<rect x="504" y="620" width="128" height="52" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text x="568" y="640" text-anchor="middle" dominant-baseline="central" class="th-red">Full miss</text>
+<text x="568" y="658" text-anchor="middle" dominant-baseline="central" class="ts-red">DOM too changed</text>
+
+<!-- Mismatch + miss → permission ask -->
+<line x1="340" y1="672" x2="340" y2="700" class="arr" marker-end="url(#arrow)" stroke="#BA7517"/>
+<line x1="568" y1="672" x2="452" y2="700" class="arr" marker-end="url(#arrow)" stroke="#A32D2D"/>
+
+<!-- Permission ask (screenshot) -->
+<rect x="190" y="700" width="300" height="38" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/>
+<text x="340" y="713" text-anchor="middle" dominant-baseline="central" class="th-amber">Allow? (y/n)</text>
+<text x="340" y="729" text-anchor="middle" dominant-baseline="central" class="ts-amber">SmartReplay needs screenshot + a11y snapshot of tab</text>
+
+<line x1="340" y1="738" x2="340" y2="758" class="arr" marker-end="url(#arrow)" stroke="#1D9E75"/>
+
+<!-- KEY BOX: tool result → Claude Code session -->
+<rect x="60" y="758" width="560" height="80" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+<text x="340" y="781" text-anchor="middle" dominant-baseline="central" class="th-purple">Tool result returned to Claude Code session</text>
+<text x="340" y="799" text-anchor="middle" dominant-baseline="central" class="ts-purple">{ screenshot, a11yTree, failedStep } — no new API connection opened</text>
+<text x="340" y="816" text-anchor="middle" dominant-baseline="central" class="ts-purple">Claude Code reasons over it → generates healed Playwright step → calls tool back</text>
+<text x="340" y="833" text-anchor="middle" dominant-baseline="central" class="ts-purple">all tokens: Claude Code's existing session only ✓</text>
+
+<line x1="340" y1="838" x2="340" y2="860" class="arr" marker-end="url(#arrow)" stroke="#534AB7"/>
+
+<!-- Learning loop -->
+<rect x="60" y="860" width="560" height="98" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text x="340" y="882" text-anchor="middle" dominant-baseline="central" class="th-green">Learning loop</text>
+<rect x="80" y="896" width="148" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text x="154" y="914" text-anchor="middle" dominant-baseline="central" class="ts-green">validate step ran OK</text>
+<rect x="246" y="896" width="188" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text x="340" y="907" text-anchor="middle" dominant-baseline="central" class="ts-green">success: score × 1.05 + 0.02</text>
+<text x="340" y="923" text-anchor="middle" dominant-baseline="central" class="ts-green">failure: score × 0.85 − 0.05</text>
+<rect x="452" y="896" width="148" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+<text x="526" y="914" text-anchor="middle" dominant-baseline="central" class="ts-green">alert if LLM also fails</text>
+
+<!-- Writes back to action store (right) -->
+<path d="M640 920 L660 920 L660 328 L622 328" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="674" y="640" text-anchor="middle" class="ts" fill="#B4B2A9" transform="rotate(90,674,640)">writes back to store</text>
+
+<!-- Cache hit bump (left) -->
+<path d="M48 648 L28 648 L28 328 L58 328" fill="none" stroke="#1D9E75" stroke-width="0.8" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+<text x="16" y="500" text-anchor="middle" class="ts" fill="#1D9E75" transform="rotate(270,16,500)">cache hit → score bump</text>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CONFIDENCE LEGEND -->
+<!-- ══════════════════════════════════════════════════════ -->
+<rect x="40" y="1072" width="600" height="36" rx="8" fill="none" stroke="#D3D1C7" stroke-width="0.5"/>
+<text x="58" y="1090" dominant-baseline="central" class="ts" fill="#888780">confidence zones:</text>
+<rect x="168" y="1079" width="66" height="18" rx="4" fill="#085041"/>
+<text x="201" y="1088" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#9FE1CB;font-family:sans-serif;">0.85 trusted</text>
+<rect x="244" y="1079" width="60" height="18" rx="4" fill="#854F0B"/>
+<text x="274" y="1088" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#FAC775;font-family:sans-serif;">0.50 shaky</text>
+<rect x="314" y="1079" width="68" height="18" rx="4" fill="#791F1F"/>
+<text x="348" y="1088" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#F7C1C1;font-family:sans-serif;">0.25 degraded</text>
+<rect x="392" y="1079" width="48" height="18" rx="4" fill="#2C2C2A"/>
+<text x="416" y="1088" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:500;fill:#D3D1C7;font-family:sans-serif;">0 dead</text>
+<text x="450" y="1090" dominant-baseline="central" class="ts" fill="#888780">· unused: ×0.99/day</text>
+</svg>

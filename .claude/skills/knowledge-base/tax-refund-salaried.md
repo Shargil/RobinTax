@@ -28,6 +28,8 @@ Covers the refund flow for a salaried Israeli employee who is **not** required t
 
 ## Required documents
 
+> Comprehensive catalog (with the identification question and where to obtain each) lives in [tax-refund-documents-salaried.md](tax-refund-documents-salaried.md). The list below is the high-level baseline.
+
 - תעודת זהות (ID copy).
 - **טופס 106 from every employer**, every year claimed. Employers must issue 106 by end of March for the prior year. This is the single most critical document — without it the request will not be processed.
 - אישור ניהול חשבון בנק — bank-account confirmation; refund is wired here.

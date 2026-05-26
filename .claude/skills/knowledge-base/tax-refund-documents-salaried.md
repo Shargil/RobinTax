@@ -1,9 +1,14 @@
-# Documents for Tax Refund (החזר מס) for a Salaried Employee (שכיר) — Comprehensive Research
+---
+Source: compiled from gov.il (רשות המסים), Kol-Zchut, and CPA blogs — see "Sources" section in this file
+Last verified: 2026-05-22
+---
 
-> Initial research document: all potential documents that can affect a tax refund (החזר מס) for a salaried employee (שכיר) in Israel, identification questions for relevance, and where to obtain them. Based on internet sources from 2025–2026.
->
-> **Lookback window (טווח לאחור)**: You can file a tax refund request up to **6 years back**. As of 2026 — the open tax years are 2020–2025.
-> **Framework form for a שכיר**: Form 135 (טופס 135) — the short annual report (דו"ח שנתי מקוצר), or Form 1301 (טופס 1301) for those required to file a full report.
+# Documents for a Salaried Tax Refund (מסמכים להחזר מס לשכיר)
+
+Catalog of every document that can affect a salaried Israeli employee's tax refund — what each is, the identification question to know whether it's relevant, and where to obtain it. Companion to [tax-refund-salaried.md](tax-refund-salaried.md), which covers the Form 135 process itself. Does NOT cover self-employed — see [tax-refund-self-employed.md](tax-refund-self-employed.md).
+
+- **Lookback window (טווח לאחור):** up to 6 tax years back. As of 2026 — the open tax years are 2020–2025.
+- **Framework form for a שכיר:** Form 135 (טופס 135) — the short annual report (דו"ח שנתי מקוצר), or Form 1301 (טופס 1301) for those required to file a full report.
 
 ---
 
@@ -303,9 +308,14 @@ The order is built so that filtering questions (high-yield, few people eligible)
 
 ---
 
-## Notes for the Next Stage (Building a Skill)
+## Related
 
-- Every item in the document is ready to be converted into a "block" with 3 fields: **trigger condition** (the question), **document name**, **source for obtaining**.
-- Worth adding logic of "if A=yes, also ask B" — for example, if the user finished a degree → ask when exactly in order to calculate credit points for each year.
-- 2026 rules are changing: donations reform (Section 46) requires a digital receipt from 1/1/2026; temporary provision for new immigrants from 5/11/2025.
-- Worth adding validation: for example, eligible settlement is valid for a specific year (the list is updated annually).
+- [tax-refund-salaried.md](tax-refund-salaried.md) — the Form 135 process this catalog feeds into.
+- [tax-refund-self-employed.md](tax-refund-self-employed.md) — Form 1301 track (different document set).
+- [tax-refund-timing.md](tax-refund-timing.md) — processing time, interest, and refund-amount benchmarks.
+
+## Gotchas
+
+- **2026 rule changes:** donations reform (Section 46) requires a digital receipt reported to the ITA system from 1/1/2026; new temporary provision for new immigrants from 5/11/2025.
+- **Eligible-settlement list (יישוב מזכה)** is updated annually — verify the year-specific list when claiming Section 11 credit.
+- **Form 106 deadline:** employers must issue by 31/3 of the following year. If missing, request from the employer first; an inactive former employer routes via the Ministry of Labor / labor court.

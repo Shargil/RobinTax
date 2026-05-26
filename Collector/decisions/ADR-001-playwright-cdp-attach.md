@@ -1,7 +1,7 @@
 # ADR-001 (Collector): Drive the user's Chrome via Playwright + CDP attach on port 9222
 
 **Date:** 2026-05-22
-**Status:** accepted
+**Status:** superseded by [ADR-005](./ADR-005-playwriter-chrome-extension.md) on 2026-05-26 — `--remote-debugging-port=9222` is silently ignored by Chrome 136+ when `--user-data-dir` points at the default profile (see [`research/chrome-devtools-mcp-setup.md:28`](../research/chrome-devtools-mcp-setup.md) and [Chrome's announcement](https://developer.chrome.com/blog/remote-debugging-port)). The Playwriter Chrome extension via `chrome.debugger` is the only API that can drive the user's signed-in profile.
 
 ## Context
 

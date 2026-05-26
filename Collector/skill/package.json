@@ -1,0 +1,18 @@
+{
+  "name": "smart-replay-skill",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Collector MVP — record & replay tax-document flows in the user's logged-in Chrome via Playwriter.",
+  "scripts": {
+    "spike": "node src/spike.mjs",
+    "relay": "playwriter serve --host 127.0.0.1",
+    "flow": "node --experimental-strip-types src/runner.ts",
+    "server": "node --experimental-strip-types src/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "playwright-core": "^1.59.0",
+    "playwriter": "^0.2.0"
+  }
+}

@@ -1,0 +1,110 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - group:
+        - generic "נגישות" [ref=e7] [cursor=pointer]
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - link "דלג לתוכן ראשי" [ref=e12] [cursor=pointer]:
+              - /url: javascript:void(0);
+            - button "שינוי תצוגת תפריט למצב מורחב, אייקונים עם טקסט" [ref=e13] [cursor=pointer]: 
+          - link "רשות המיסים" [ref=e14] [cursor=pointer]:
+            - /url: http://www.taxes.gov.il/
+            - img [ref=e15]
+        - generic [ref=e17]:
+          - button "שרגיל ים" [ref=e18] [cursor=pointer]:
+            - generic [ref=e19]: 
+            - generic [ref=e20]: שרגיל ים
+          - navigation "תפריט משתמש":   
+    - generic:
+      - generic:
+        - generic:               
+  - generic [ref=e21]:
+    - navigation "תפריט ראשי" [ref=e25]:
+      - button "פתח תפריט ראשי" [ref=e26] [cursor=pointer]
+    - main [ref=e28]:
+      - generic [ref=e161]:
+        - generic [ref=e163]:
+          - heading "טפסי 106" [level=1] [ref=e164]
+          - heading "טפסי 106 של 208498501 - שרגיל ים" [level=2] [ref=e165]
+          - generic [ref=e166]: ריכוז הנתונים מהמעסיקים שלך ל-6 שנים האחרונות
+          - alert [ref=e167]:
+            - text: 
+            - paragraph [ref=e168]:
+              - text: אנו מציגים טפסים משנת 2017 ואילך.
+              - text: לשחזור טפסים משנים קודמות, עליך לפנות למשרד המס.
+              - text: המידע המוצג כאן מסתמך על דיווחי המעסיק כפי שמופיעים במאגרי רשות המסים נכון למועד הנפקת הטופס. אם הנתונים בטופס אינם מלאים או קיים הבדל בינם לבין נתוני טופס 106 שנמסר מהמעסיק, יש לוודא את נכונותם מול המעסיק.
+          - generic [ref=e172]:
+            - listitem [ref=e174]:
+              - group [ref=e175]:
+                - generic "2025 " [ref=e176] [cursor=pointer]:
+                  - generic [ref=e177]:
+                    - heading "2025" [level=3] [ref=e179]
+                    - paragraph
+                  - text: 
+                - text: 
+            - listitem [ref=e181]:
+              - group [ref=e182]:
+                - generic "2024 " [ref=e183] [cursor=pointer]:
+                  - generic [ref=e184]:
+                    - heading "2024" [level=3] [ref=e186]
+                    - paragraph
+                  - text: 
+                - text: 
+            - listitem [ref=e188]:
+              - group [ref=e189]:
+                - generic "2023 " [ref=e190] [cursor=pointer]:
+                  - generic [ref=e191]:
+                    - heading "2023" [level=3] [ref=e193]
+                    - paragraph
+                  - text: 
+                - text: 
+            - listitem [ref=e195]:
+              - group [ref=e196]:
+                - generic "2022 " [ref=e197] [cursor=pointer]:
+                  - generic [ref=e198]:
+                    - heading "2022" [level=3] [ref=e200]
+                    - paragraph
+                  - text: 
+                - text: 
+            - listitem [ref=e202]:
+              - group [ref=e203]:
+                - generic "2021 " [ref=e204] [cursor=pointer]:
+                  - generic [ref=e205]:
+                    - heading "2021" [level=3] [ref=e207]
+                    - paragraph
+                  - text: 
+                - text: 
+            - listitem [ref=e209]:
+              - group [ref=e210]:
+                - generic "2020 " [ref=e211] [cursor=pointer]:
+                  - generic [ref=e212]:
+                    - heading "2020" [level=3] [ref=e214]
+                    - paragraph
+                  - text: 
+                - text: 
+            - strong [ref=e215]:
+              - button "טפסים משנים קודמות" [ref=e216] [cursor=pointer]
+            - text:      
+        - button "חזרה" [ref=e219] [cursor=pointer]
+  - generic:
+    - generic:
+      - contentinfo [ref=e147]:
+        - list [ref=e149]:
+          - listitem [ref=e150]:
+            - link "עמוד הבית" [ref=e151] [cursor=pointer]:
+              - /url: http://www.taxes.gov.il
+          - listitem [ref=e152]:
+            - link "© כל הזכויות שמורות" [ref=e153] [cursor=pointer]:
+              - /url: https://www.misim.gov.il/ShaamMaster2010/copyRights.html
+          - listitem [ref=e154]:
+            - link "gov.il" [ref=e155] [cursor=pointer]:
+              - /url: http://www.gov.il
+              - img "gov.il" [ref=e156]
+          - listitem [ref=e157]:
+            - button "הצהרת נגישות" [ref=e158] [cursor=pointer]
+          - listitem [ref=e159]:
+            - link "לראש העמוד" [ref=e160] [cursor=pointer]:
+              - /url: javascript:void(0)
+      - text: 

@@ -5,6 +5,17 @@
 Users/
 Test/
 
+# Playwright codegen output — may contain plaintext credentials (ADR-001)
+*.recorded.py
+
+# Downloaded tax documents — PII, per-run artifacts
+Collector/downloads/
+Collector/skill/downloads/
+downloads/
+
+# Playwright extension MCP cache / page snapshots (from earlier research)
+.playwright-mcp/
+
 # Python
 __pycache__/
 *.py[cod]

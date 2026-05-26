@@ -1,0 +1,141 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - group:
+        - generic "נגישות" [ref=e7] [cursor=pointer]
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - link "דלג לתוכן ראשי" [ref=e12] [cursor=pointer]:
+              - /url: javascript:void(0);
+            - button "שינוי תצוגת תפריט למצב מורחב, אייקונים עם טקסט" [ref=e13] [cursor=pointer]: 
+          - link "רשות המיסים" [ref=e14] [cursor=pointer]:
+            - /url: http://www.taxes.gov.il/
+            - img [ref=e15]
+        - generic [ref=e17]:
+          - button "שרגיל ים" [ref=e18] [cursor=pointer]:
+            - generic [ref=e19]: 
+            - generic [ref=e20]: שרגיל ים
+          - navigation "תפריט משתמש":   
+    - generic:
+      - generic:
+        - generic:               
+  - generic [ref=e21]:
+    - navigation "תפריט ראשי" [ref=e25]:
+      - button "פתח תפריט ראשי" [ref=e26] [cursor=pointer]
+    - main [ref=e28]:
+      - generic [ref=e32]:
+        - heading "צהריים טובים, שרגיל ים" [level=1] [ref=e33]
+        - paragraph [ref=e34]: ביקרת כאן לאחרונה ב - 23/05/2026
+        - heading "פעולות בשבילך" [level=2] [ref=e35]
+        - paragraph [ref=e36]: מידע ופעולות שיכולות להתאים לך
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - link "ניווט למערכת תיאום מס. הגשת בקשה וצפייה באישורי תיאום מס" [ref=e40] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "תיאום מס" [ref=e41]
+              - heading "תיאום מס" [level=3] [ref=e42]
+              - paragraph [ref=e43]: הגשת בקשה וצפייה באישורי תיאום מס
+            - link "ניווט למערכת טפסי 106. צפייה באישורי המעסיק על נתוני משכורות וניכויי המס השנתיים" [ref=e45] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "טפסי 106" [ref=e46]
+              - heading "טפסי 106" [level=3] [ref=e47]
+              - paragraph [ref=e48]: צפייה באישורי המעסיק על נתוני משכורות וניכויי המס השנתיים
+            - link "ניווט למערכת מענק עבודה. הגשת בקשה, צפייה בבקשות שהוגשו ועדכון חשבון בנק במענק עבודה" [ref=e50] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "מענק עבודה" [ref=e51]
+              - heading "מענק עבודה" [level=3] [ref=e52]
+              - paragraph [ref=e53]: הגשת בקשה, צפייה בבקשות שהוגשו ועדכון חשבון בנק במענק עבודה
+            - link "ניווט למערכת החזר מס. הגשת בקשה להחזר מס עד שש שנים אחורה" [ref=e55] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "החזר מס" [ref=e56]
+              - heading "החזר מס" [level=3] [ref=e57]
+              - paragraph [ref=e58]: הגשת בקשה להחזר מס עד שש שנים אחורה
+            - link "ניווט למערכת תרומות. צפייה בתרומות שתרמת לעמותות המחוברות לרשות המסים" [ref=e60] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "תרומות" [ref=e61]
+              - heading "תרומות" [level=3] [ref=e62]
+              - paragraph [ref=e63]: צפייה בתרומות שתרמת לעמותות המחוברות לרשות המסים
+            - link "ניווט למערכת דיווח סיום העסקה אצל מעסיק(טופס 161). דיווח על פרישה או סיום עבודה נוכחי" [ref=e65] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "דיווח סיום העסקה אצל מעסיק(טופס 161)" [ref=e66]
+              - heading "דיווח סיום העסקה אצל מעסיק(טופס 161)" [level=3] [ref=e67]
+              - paragraph [ref=e68]: דיווח על פרישה או סיום עבודה נוכחי
+            - link "ניווט למערכת פתיחת תיק. פתיחת תיק עוסק פטור, עסק זעיר או דיווח ותשלום על הכנסות משכר דירה" [ref=e70] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "פתיחת תיק" [ref=e71]
+              - heading "פתיחת תיק" [level=3] [ref=e72]
+              - paragraph [ref=e73]: פתיחת תיק עוסק פטור, עסק זעיר או דיווח ותשלום על הכנסות משכר דירה
+            - link "ניווט למערכת מס מופחת בגין שכ\"ד . בחירת מסלול דיווח על הכנסה משכר דירה ולתשלום" [ref=e75] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "מס מופחת בגין שכ\"ד" [ref=e76]
+              - heading "מס מופחת בגין שכ\"ד" [level=3] [ref=e77]
+              - paragraph [ref=e78]: בחירת מסלול דיווח על הכנסה משכר דירה ולתשלום
+            - link "ניווט למערכת פניות. צפייה בפניות ששלחת, פתיחת פניה חדשה לרשות המסים" [ref=e80] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "פניות" [ref=e81]
+              - heading "פניות" [level=3] [ref=e82]
+              - paragraph [ref=e83]: צפייה בפניות ששלחת, פתיחת פניה חדשה לרשות המסים
+            - link "ניווט למערכת סיכום מענקים. צפייה במענקים שקיבלת" [ref=e85] [cursor=pointer]:
+              - /url: javascript:void(0)
+              - img "סיכום מענקים" [ref=e86]
+              - heading "סיכום מענקים" [level=3] [ref=e87]
+              - paragraph [ref=e88]: צפייה במענקים שקיבלת
+          - generic [ref=e89]: 
+        - heading "מידע ופעולות נוספות ברשות המסים" [level=2] [ref=e90]
+        - generic [ref=e93]:
+          - button "הנדל\"ן שלי צפייה במידע על נכסים ועסקאות בתחום הנדל\"ן" [ref=e95] [cursor=pointer]:
+            - generic [ref=e98]:
+              - heading "הנדל\"ן שלי" [level=3] [ref=e99]
+              - paragraph [ref=e100]: צפייה במידע על נכסים ועסקאות בתחום הנדל"ן
+            - generic [ref=e101]: 
+          - button "קיבוע זכויות בקשה לקבלת פטור ממס על קצבה ממעביד לשעבר או מקופת גמל למגיעים לגיל פרישה או למי שפרשו מעבודה עקב נכות מעל 75%" [ref=e103] [cursor=pointer]:
+            - generic [ref=e106]:
+              - heading "קיבוע זכויות" [level=3] [ref=e107]
+              - paragraph [ref=e108]: בקשה לקבלת פטור ממס על קצבה ממעביד לשעבר או מקופת גמל למגיעים לגיל פרישה או למי שפרשו מעבודה עקב נכות מעל 75%
+            - generic [ref=e109]: 
+          - button "חשבוניות ישראל הנפקה וצפייה במספרי הקצאה לחשבוניות" [ref=e111] [cursor=pointer]:
+            - generic [ref=e114]:
+              - heading "חשבוניות ישראל" [level=3] [ref=e115]
+              - paragraph [ref=e116]: הנפקה וצפייה במספרי הקצאה לחשבוניות
+            - generic [ref=e117]: 
+          - button "פיצויי פעולות איבה הגשת בקשה לפיצוי עקב נזק ישיר או עקיף עקב פעולות איבה" [ref=e119] [cursor=pointer]:
+            - generic [ref=e122]:
+              - heading "פיצויי פעולות איבה" [level=3] [ref=e123]
+              - paragraph [ref=e124]: הגשת בקשה לפיצוי עקב נזק ישיר או עקיף עקב פעולות איבה
+            - generic [ref=e125]: 
+          - button "הרשאות לביצוע פעולות מתן אישור לגורמים שונים לצפות או לבצע פעולות דיגיטליות בשמך ברשות המסים" [ref=e127] [cursor=pointer]:
+            - generic [ref=e130]:
+              - heading "הרשאות לביצוע פעולות" [level=3] [ref=e131]
+              - paragraph [ref=e132]: מתן אישור לגורמים שונים לצפות או לבצע פעולות דיגיטליות בשמך ברשות המסים
+            - generic [ref=e133]: 
+          - button "ועדות רפואיות הגשת בקשה לקביעת אחוזי נכות לצורך הקלות במס ובדיקת מצב בקשה" [ref=e135] [cursor=pointer]:
+            - generic [ref=e138]:
+              - heading "ועדות רפואיות" [level=3] [ref=e139]
+              - paragraph [ref=e140]: הגשת בקשה לקביעת אחוזי נכות לצורך הקלות במס ובדיקת מצב בקשה
+            - generic [ref=e141]: 
+        - link "כל הפעולות ברשות המסים" [ref=e143] [cursor=pointer]:
+          - /url: javascript:void(0)
+          - text: כל הפעולות ברשות המסים
+          - generic [ref=e144]: 
+        - button " יש לך רעיון לשיפור האיזור האישי?" [ref=e146] [cursor=pointer]
+  - generic:
+    - generic:
+      - contentinfo [ref=e147]:
+        - list [ref=e149]:
+          - listitem [ref=e150]:
+            - link "עמוד הבית" [ref=e151] [cursor=pointer]:
+              - /url: http://www.taxes.gov.il
+          - listitem [ref=e152]:
+            - link "© כל הזכויות שמורות" [ref=e153] [cursor=pointer]:
+              - /url: https://www.misim.gov.il/ShaamMaster2010/copyRights.html
+          - listitem [ref=e154]:
+            - link "gov.il" [ref=e155] [cursor=pointer]:
+              - /url: http://www.gov.il
+              - img "gov.il" [ref=e156]
+          - listitem [ref=e157]:
+            - button "הצהרת נגישות" [ref=e158] [cursor=pointer]
+          - listitem [ref=e159]:
+            - link "לראש העמוד" [ref=e160] [cursor=pointer]:
+              - /url: javascript:void(0)
+      - text: 
