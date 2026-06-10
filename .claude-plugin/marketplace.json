@@ -1,0 +1,14 @@
+{
+  "name": "robintax",
+  "description": "RobinTax plugin distribution catalog. One plugin: robintax.",
+  "owner": {
+    "name": "Yam Shargil"
+  },
+  "plugins": [
+    {
+      "name": "robintax",
+      "source": "./",
+      "description": "Get your Israeli tax refund: drive your own Chrome to collect tax-refund documents, then compute per-year refund + a file/don't-file recommendation."
+    }
+  ]
+}

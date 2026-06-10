@@ -1,0 +1,10 @@
+{
+  "name": "robintax",
+  "description": "Get your Israeli tax refund: drive your own Chrome to collect tax-refund documents (ITA, BTL, employers, banks), then compute per-year refund + a file/don't-file recommendation. Math is deterministic, every load-bearing value is second-checked, you confirm every bottom line. Mac for full features (Apple Reminders); Windows runs without the reminder backend.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Yam Shargil"
+  },
+  "homepage": "https://github.com/Shargil/RobinTax",
+  "repository": "https://github.com/Shargil/RobinTax"
+}
