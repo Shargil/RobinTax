@@ -10,9 +10,9 @@ skills. It does not fetch documents, calculate, or file itself — workers do th
 
 Three layers (see [ADR-011](../../docs/decisions/ADR-011-user-journey-ledger.md)):
 
-- **State** — the ledger at `<memory>/journey.md` (`<memory>` = `~/.claude/projects/<project>/memory/`).
+- **State** — the ledger at `<memory>/journey.md` (`<memory>` = `~/.claude/projects/<project>/memory/`) and the profile at `<memory>/profile.md` (the latter per [ADR-013](../../docs/decisions/ADR-013-user-profile-and-intake.md)).
 - **Orchestrator** — this skill.
-- **Workers** — `get-doc` (collection, built); `calc-refund` (calculation, built — engine + 2020–2025 rule tables + verifier all in place); `file` (not built yet).
+- **Workers** — `intake` (eligibility intake, built — first stage); `get-doc` (collection, built); `calc-refund` (calculation, built — engine + 2020–2025 rule tables + verifier all in place); `file` (not built yet).
 
 ## Workflow
 
@@ -30,8 +30,10 @@ If platform-record exists, skip step 3.
 
 ### 1. READ
 
-Read `<memory>/journey.md`. If it's missing or empty, say so and offer to start document collection
-via `get-doc`.
+Read `<memory>/journey.md` and `<memory>/profile.md`. If the **profile** is missing, the user is on
+their very first run — say so in one line and route to `/intake` (it'll write the profile and seed
+the ledger; see §3 PICK NEXT). If the **ledger** is missing but the profile exists, that's
+unexpected — flag it and recover by routing to `/intake` re-walk.
 
 ### 1b. AUTO-RECHECK PENDING DOCS
 
@@ -86,7 +88,11 @@ Linking rules:
 
 Walk stages top-down; act on the first one that isn't `done`.
 
-- **Collect documents** (the only implemented stage) → hand to `get-doc`:
+- **Intake** → hand to `/intake` if `<memory>/profile.md` is missing OR the `Intake` stage row is not
+  `done`. Intake writes the profile and seeds the ledger; this skill returns to its routing loop
+  afterwards. See [ADR-013](../../docs/decisions/ADR-013-user-profile-and-intake.md). The user can
+  also re-run `/intake` directly any time to update their profile.
+- **Collect documents** → hand to `get-doc`:
   - **`requested` docs** — offer to re-check each one's **real delivery channel as defined in that
     doc's playbook** (`Collector/documents/<slug>.md`). Do **not** assume email. e.g. the IDF cert
     lives on the portal — re-open `ishurim.prat.idf.il` and read the (830) card badge
@@ -156,22 +162,16 @@ What to do next:
   item. Never let the user idle when they could already be claiming a refund for a complete year.
 - If nothing is pending, skip wrap-up entirely and route to the next stage.
 
-**Per-year completeness gate — PREREQUISITE NOT YET BUILT.**
+**Per-year completeness gate.**
 
-Computing "Years ready" requires a per-year required-docs matrix that does not exist yet. Until it's
-built, render the wrap-up's "Years ready to push" and "Years still blocked" sections as a single
-placeholder line:
+Compute "Years ready" by cross-referencing the user's declared filing years (from `<memory>/profile.md`'s
+`## Filing scope`) with [`Intake/required-docs-matrix.md`](../../Intake/required-docs-matrix.md). For each
+declared year, walk the doc slugs that match the user's profile state (always-rows + rows whose branch
+state is `yes` or `unknown`). A year is **`ready`** when every implied slug is `have` in the ledger;
+otherwise **`blocked`** on the missing slugs.
 
-```
-Per-year readiness:
-  ⚠ Not computed — required-docs-per-year matrix not built yet (see ADR-011, TODO).
-```
-
-To enable: add a file like `Calculator/rules/required-docs-per-year.md` (or per-year property on the
-existing `Calculator/rules/<year>.ts` rule modules) declaring which doc slugs each year requires.
-Then this skill cross-references `have`-status doc slugs against that matrix to bucket years into
-`ready` / `blocked`. Do not fake it before the matrix exists — silently-wrong year readiness would
-push the user to file an incomplete year.
+Do not infer required docs from any other source. If `<memory>/profile.md` is missing, render the
+section as `⚠ Profile missing — run /intake first` and don't guess.
 
 ## Response style
 
@@ -194,6 +194,8 @@ How this skill talks to the user. Built up over time.
 - [ADR-011](../../docs/decisions/ADR-011-user-journey-ledger.md) — the journey ledger contract.
 - [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) — explain + gate scary actions.
 - [ADR-012](../../docs/decisions/ADR-012-apple-reminders-for-pending-docs.md) — Apple Reminders substrate + cohort rule used by WRAP-UP and AUTO-RECHECK.
+- [ADR-013](../../docs/decisions/ADR-013-user-profile-and-intake.md) — user profile + intake as the first stage.
+- `intake` (`skills/intake/`) — the intake-stage worker this skill routes to first.
 - `get-doc` (`skills/get-doc/`) — the collection-stage worker this skill routes to.
 - `calc-refund` (`skills/calc-refund/`) — the calculation-stage worker this skill routes to.
 

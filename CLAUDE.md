@@ -4,6 +4,7 @@ Get Israeli users their tax refund money back, for cheaper, with no spam.
 
 ## Service map
 
+- `Intake/` — eligibility intake: the conversation that runs first to figure out which docs the user needs and which calculator branches apply. Branch definitions live at [`Intake/branches/`](Intake/branches/); required-docs cross-reference at [`Intake/required-docs-matrix.md`](Intake/required-docs-matrix.md). Output: sanitized profile at `<memory>/profile.md` (per [ADR-013](docs/decisions/ADR-013-user-profile-and-intake.md)).
 - `Collector/` — drives the user's own Chrome via Playwright + CDP to collect tax-refund documents from ITA, employer portals, banks, and pension funds. Runs inside the user's own browser session. Per-document research + playbooks live at [`Collector/documents/`](Collector/documents/).
 - `Calculator/` — per-year refund computation. Deterministic math, LLM only at the edges, ITA as the final oracle. Engine ([`Calculator/engine/`](Calculator/engine/)), per-year rule tables ([`Calculator/rules/`](Calculator/rules/) — 2020–2025), and second-check verifier ([`Calculator/verifier/`](Calculator/verifier/)) all built.
 - `GTM/` — go-to-market assets.
@@ -23,7 +24,8 @@ Get Israeli users their tax refund money back, for cheaper, with no spam.
 
 ## Available skills (shipped in the plugin)
 
-- `robintax` — **front door.** `/robintax:robintax` resumes the user's tax return: reads the journey ledger, reports standing across all stages (collect → calculate → file), and routes to the next worker skill. Start here. Source: [`skills/robintax/`](skills/robintax/).
+- `robintax` — **front door.** `/robintax:robintax` resumes the user's tax return: reads the journey ledger, reports standing across all stages (intake → collect → calculate → file), and routes to the next worker skill. Start here. Source: [`skills/robintax/`](skills/robintax/).
+- `intake` — slash-command or `robintax`-routed worker for the **Intake** stage (first run). Asks a short structured set of eligibility questions via `AskUserQuestion`, writes a sanitized profile at `<memory>/profile.md`, and seeds the journey ledger with the docs the profile implies. Branch definitions at [`Intake/branches/`](Intake/branches/). Source: [`skills/intake/`](skills/intake/).
 - `get-doc` — slash-command-only (`/robintax:get-doc <document>`, or no-arg to resume collection) loop that fetches one of the catalogued tax-refund documents via the user's logged-in Chrome and writes back a sanitized playbook to `Collector/documents/<slug>.md`. Source: [`skills/get-doc/`](skills/get-doc/).
 - `calc-refund` — slash-command or `robintax`-routed worker for the **Calculate refund** stage. Computes per-year refund/owe + a file/don't-file recommendation via [`Calculator/engine/`](Calculator/engine/) + [`Calculator/rules/`](Calculator/rules/), second-checking every load-bearing value and human-confirming every bottom line via [`Calculator/verifier/`](Calculator/verifier/). Source: [`skills/calc-refund/`](skills/calc-refund/).
 - `monorepo-mega-skill` — **dev-only**, not shipped. How this repo organizes CLAUDE.md, ADRs, and skills. Source: [`.claude/skills/monorepo-mega-skill/`](.claude/skills/monorepo-mega-skill/).

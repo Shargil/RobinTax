@@ -14,7 +14,7 @@ Asks the user a short structured set of eligibility questions on first run, prod
 - [`required-docs-matrix.md`](required-docs-matrix.md) — flat cross-reference `(year, branch) → [doc slugs]`. The other half of "what docs does this user need." Replaces the TODO at [`.claude/skills/robintax/SKILL.md:150-166`](../.claude/skills/robintax/SKILL.md).
 - [`decisions/`](decisions/) — service-local ADRs.
 
-The `intake` skill itself lives at [`../.claude/skills/intake/`](../.claude/skills/intake/) — it's repo-wide because `/robintax` routes to it from outside this service tree.
+The `intake` skill itself lives at [`../skills/intake/`](../skills/intake/) — it's repo-wide because `/robintax` routes to it from outside this service tree.
 
 ## Branch file shape
 
@@ -50,7 +50,7 @@ Every branch follows the same shape so the walker can iterate them:
 
 ## Available skills for this service
 
-- `intake` (repo-wide, at [`../.claude/skills/intake/`](../.claude/skills/intake/)) — the conversation walker. Reads branch files, asks gates + follow-ups via `AskUserQuestion`, writes `<memory>/profile.md`, seeds `<memory>/journey.md`.
+- `intake` (repo-wide, at [`../skills/intake/`](../skills/intake/)) — the conversation walker. Reads branch files, asks gates + follow-ups via `AskUserQuestion`, writes `<memory>/profile.md`, seeds `<memory>/journey.md`.
 
 ## Local decisions
 

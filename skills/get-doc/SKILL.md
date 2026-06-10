@@ -31,6 +31,7 @@ Before and after every run, this skill reads/writes the per-user journey ledger 
 - **Single writer at a time**: read it, modify only the rows/sections you own, write it back, and stamp `Last updated: <date> by get-doc`.
 - Doc status state machine: `todo → requested → have`, with `blocked` / `n/a` as side states. `requested` = submitted, awaiting async delivery (e.g. an emailed PDF).
 - Documents row columns: `Doc (slug) | Status | Updated | File | Next action | ETA | Reminder ID`. ETA + Reminder ID only set when status is `requested`; cleared on any other transition.
+- **The ledger may arrive intake-seeded.** Per [ADR-013](../../docs/decisions/ADR-013-user-profile-and-intake.md), the `intake` skill seeds `todo` rows for the docs implied by the user's profile before this skill ever runs. No behavior change — operate on `todo` rows the same way whether they were intake-seeded or accreted on first touch. If a `todo` row references a slug that has no playbook in `Collector/documents/`, treat it as `blocked` with manual instructions rather than attempting to fetch.
 
 ## Pending-doc reminders (Apple Reminders)
 

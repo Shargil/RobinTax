@@ -50,5 +50,5 @@ The `unknown` tri-state is what makes the intake actually completable. A binary 
 - [ADR-001](ADR-001-no-credential-proxy.md) — same trust boundary: profile stays out of the shared repo because it reveals personal facts.
 - [ADR-010](ADR-010-explain-and-gate-scary-actions.md) — intake gates once at the top (the preamble), then runs the batch without per-question re-confirmation.
 - [ADR-011](ADR-011-user-journey-ledger.md) — the ledger contract this extends. Intake is the new first stage; profile is the new sibling artifact.
-- `intake` skill (`.claude/skills/intake/`) — sole writer.
+- `intake` skill (`skills/intake/`) — sole writer.
 - `Intake/` service — branch definitions and required-docs matrix.

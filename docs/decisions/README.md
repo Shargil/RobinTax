@@ -11,8 +11,10 @@ Scan filenames first. Open an ADR only when its name suggests it's relevant.
 | [ADR-009](ADR-009-user-owns-login-and-captcha.md) | The user always performs login and CAPTCHA themselves | accepted |
 | [ADR-010](ADR-010-explain-and-gate-scary-actions.md) | Explain the reason before any action; gate "very scary" actions on explicit consent | accepted |
 | [ADR-011](ADR-011-user-journey-ledger.md) | One per-user journey ledger as the cross-skill source of truth | accepted |
+| [ADR-012](ADR-012-apple-reminders-for-pending-docs.md) | Apple Reminders substrate for pending-doc reminders + cohort bundling | accepted |
+| [ADR-013](ADR-013-user-profile-and-intake.md) | User profile + intake as the first journey stage | accepted |
 
-> ADR numbers are not reused. Gaps (002, 004–008) are historical — those ADRs were specific to the Chrome-extension architecture that was retired on 2026-05-22. New ADRs continue from the next unused number (012).
+> ADR numbers are not reused. Gaps (002, 004–008) are historical — those ADRs were specific to the Chrome-extension architecture that was retired on 2026-05-22. New ADRs continue from the next unused number.
 
 ## Process
 
