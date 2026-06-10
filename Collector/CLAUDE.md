@@ -20,6 +20,12 @@ Not yet implemented — these are design docs.
 
 **`design/smart_replay_hld.md` is the source of truth for this service.** When behavior or architecture changes, update the HLD in the *same* change — never let code drift ahead of it. The diagram is `design/smart_replay_hld.svg`, hand-maintained — edit the SVG markup directly and keep it in step with the prose. Run the `collector-design-sync` skill on any such change.
 
+## Per-document research + playbooks
+
+[`documents/`](documents/) holds one file per tax-refund document type. Each file has a Methods table (alternative ways to obtain the doc, with confidence + delivery), prose research on where the doc lives, and zero or more playbooks (sanitized playwriter snippets that worked). Maintained by the repo-wide [`get-doc`](../.claude/skills/get-doc/) skill — slash-command-only, fetches the doc via the user's logged-in Chrome and writes back the playbook.
+
+[`documents/recordings/`](documents/recordings/) holds sanitized `.recording.ts` files produced via the `playwright codegen` ritual ([ADR-003](decisions/ADR-003-recording-via-playwright-codegen.md)) — higher-fidelity than playbook snippets, suitable for graduation into Smart Replay flow modules. One file per site, named `<domain>.recording.ts`.
+
 ## Available skills for this service
 
 - `collector-design-sync` — keep `design/` (HLD + diagram) in sync when Collector behavior or architecture changes.

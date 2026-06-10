@@ -1,0 +1,71 @@
+{
+  "year": 2024,
+  "refundOrOwe": "refund",
+  "amountNis": 7334,
+  "recommendation": "file",
+  "income": {
+    "rows": [
+      { "label": "Employer A", "amount": 12855, "source": "form-106:A:158/172" },
+      { "label": "Employer B", "amount": 78896, "source": "form-106:B:158/172" }
+    ],
+    "total": 91751
+  },
+  "withheld": {
+    "rows": [
+      { "label": "Employer A", "amount": 0, "source": "form-106:A:042" },
+      { "label": "Employer B", "amount": 7452, "source": "form-106:B:042" }
+    ],
+    "total": 7452
+  },
+  "taxable": {
+    "gross": 91751,
+    "pensionDeduction": 3501,
+    "taxable": 88250
+  },
+  "brackets": [
+    { "upTo": 84120, "rate": 0.10, "widthApplied": 84120, "taxAdded": 8412 },
+    { "upTo": 120720, "rate": 0.14, "widthApplied": 4130, "taxAdded": 578.2 },
+    { "upTo": 193800, "rate": 0.20, "widthApplied": 0, "taxAdded": 0 },
+    { "upTo": 269280, "rate": 0.31, "widthApplied": 0, "taxAdded": 0 },
+    { "upTo": 560280, "rate": 0.35, "widthApplied": 0, "taxAdded": 0 },
+    { "upTo": null, "rate": 0.47, "widthApplied": 0, "taxAdded": 0 }
+  ],
+  "basicTax": 8990,
+  "credits": {
+    "points": {
+      "base": 2.25,
+      "soldier": 0,
+      "immigrant": 0,
+      "degree": 0,
+      "single_parent": 0,
+      "total": 2.25,
+      "pointValueAnnual": 2904,
+      "creditAmount": 6534
+    },
+    "pension": {
+      "depositLifeInsurance": 0,
+      "depositPensionFund": 3501,
+      "creditBaseCeiling": 2268,
+      "lifeEligible": 0,
+      "pensionEligible": 2268,
+      "rateLifeInsurance": 0.25,
+      "ratePensionFund": 0.35,
+      "credit": 794
+    },
+    "settlement": {
+      "settlementHe": "מדרשת בן גוריון",
+      "rate": 0.07,
+      "ceiling": 146640,
+      "qualifyingMonths": 3,
+      "eligibleIncome": 88250,
+      "monthsShare": 0.25,
+      "discount": 1544
+    },
+    "total": 8872
+  },
+  "liability": 118,
+  "mandatoryTriggers": [],
+  "notes": [
+    "Synthetic fixture — based on Yam's 2024 run for verifier/render smoke-tests."
+  ]
+}

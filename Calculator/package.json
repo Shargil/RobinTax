@@ -1,0 +1,19 @@
+{
+  "name": "calculator",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "RobinTax Calculator — second-check verifier (first component). Per-year refund computation; deterministic math, LLM only at the edges, ITA as the final oracle.",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "test": "node --test --experimental-strip-types verifier/verify.test.ts rules/load.test.ts engine/calculate.test.ts",
+    "verify": "node --experimental-strip-types verifier/verify.ts",
+    "render": "node --experimental-strip-types verifier/render.ts",
+    "yoy-diff": "node --experimental-strip-types rules/yoy-diff.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}

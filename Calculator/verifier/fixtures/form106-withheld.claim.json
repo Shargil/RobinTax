@@ -1,0 +1,7 @@
+{
+  "id": "smoke-form106-withheld-2024",
+  "question": "From the evidence below, what was the total income tax withheld at source (ניכוי מס הכנסה) for this Form 106, in NIS? Reply with the number only.",
+  "evidence": "Form 106 — tax year 2024 — employer ACME Ltd.\nField 218 ברוטו: 220,000\nField 042 ניכוי מס הכנסה: 41,250\nField 045 ניכוי ביטוח לאומי: 12,000\nחודשי עבודה: 7",
+  "type": "currency",
+  "original": { "value": 41250, "source": "form-106:2024:_1:042" }
+}

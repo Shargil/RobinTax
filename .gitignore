@@ -30,3 +30,6 @@ node_modules/
 .env
 .env.local
 *.local
+
+# Project-shared settings has accreted user-specific paths; not for shared commits yet
+.claude/settings.json
