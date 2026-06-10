@@ -98,6 +98,13 @@ export const rules: YearRules = {
   immigrant_points: { value: { by_year_from_aliyah: [3, 2, 1] }, cite: 'madrich-2024' },
 
   // Academic-degree credit — §40C / §40D. madrich-2024 referenced.
+  // BUG (flagged 2026-06-10): `eligible_years_post_completion: 1` is the PRE-2023 rule.
+  // Per §40C reform effective for graduations 2023+: BA gets 1 pt × N years (N = years of study,
+  // cap 3); MA gets 0.5 pt × N years (cap 2); PhD-direct gets 0.5 pt × 2 years. The current shape
+  // can't encode "depends on graduation year + degree level + study duration." The
+  // `DegreePointsRule` type in `./types.ts` needs extending, and the engine needs to consume the
+  // completion-year + study-years from the user profile. Tracked by `Intake/branches/degree.md`.
+  // Sources: kolzchut §40C page, ITA Form 119 2024 instructions.
   degree_points: {
     value: { first_degree: 1, second_degree: 0.5, third_or_medical: 1, eligible_years_post_completion: 1 },
     cite: 'madrich-2024',

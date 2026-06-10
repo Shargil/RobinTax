@@ -25,7 +25,7 @@ Two layers:
 Print exactly once, before any question:
 
 ```
-I'll ask a bunch of questions to make sure we catch every credit you deserve.
+I'll ask a bunch of questions to make sure we catch every credit (זיכוי מס) you deserve.
 You can always answer "I don't know" — if a credit might apply, we'll just try to fetch
 the proof document anyway and let it speak for itself. Should take 2–3 minutes.
 ```
@@ -39,7 +39,8 @@ For each v1 branch in order:
 1. **Lead with progress.** First line of every `AskUserQuestion` call's first question reads `Section N of M: <Branch name>` (e.g. `Section 3 of 6: IDF service`).
 2. **Batch where the branch file allows it.** If the branch has multiple non-conditional questions (like `household.md`), put them in one `AskUserQuestion` call (up to 4 per call). If a question is conditional on a gate, ask the gate first, then on `yes`/`unknown` ask the follow-ups in a second call.
 3. **Always include the "I don't know" option** for every eligibility gate. Phrase it exactly `I don't know` so the walker can detect it consistently. (For non-gate questions like marital status, include `I'm not sure` or `Other` where it makes sense.)
-4. **Free-text follow-ups** (e.g. `kids_count`, `discharge_date`) — ask via plain message, not `AskUserQuestion`. Free-text only when the answer is genuinely open (a date, a count, a name).
+4. **Free-text follow-ups** (e.g. `kids_count`) — ask via plain message, not `AskUserQuestion`. Free-text only when the answer is genuinely open (a count, a settlement name).
+5. **Year-pickers — prefer `AskUserQuestion` chips over free-text.** Anything that's a year (discharge, aliyah, degree completion) should be asked as chips: recent-year options + an "older" / "I don't know" escape. Always include `I don't know` and explain in its description that we'll fetch the proof doc to find out — never punish the user for not remembering a date.
 
 Walker state is a dict `profile = { <branch_key>: <answer>, ... }`. Maintain it in working memory across questions; do not write to disk yet.
 

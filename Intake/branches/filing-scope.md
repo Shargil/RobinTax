@@ -10,8 +10,14 @@ This branch has no single gate; both questions always asked.
 
 ### Q1 — Years to file
 **Key:** `years`
-**Question:** "Which tax years do you want to claim a refund for? You can pick more than one — Israeli refunds are claimable up to 6 years back."
-**Options (multiSelect):** 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | I don't know
+**Question:** "Which tax years do you want to claim a refund for? Pick all that apply."
+**Options (multiSelect, `AskUserQuestion`):** 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | I don't know
+
+**Always include this note above the chips:**
+
+> Why not 2019? — the 6-year refund window already closed at the end of 2025.
+> Why not 2026? — the tax year isn't finished, so it can't be filed yet.
+
 **On "I don't know":** default to 2022–2024 (the 3 most recent fully-closed years) and note in the profile that the user wasn't sure — `/robintax` can re-ask later when more docs arrive.
 
 ### Q2 — Income mode
