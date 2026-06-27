@@ -31,5 +31,6 @@ node_modules/
 .env.local
 *.local
 
-# Project-shared settings has accreted user-specific paths; not for shared commits yet
-.claude/settings.json
+# .claude/settings.json IS committed — it registers the robintax marketplace +
+# enables the plugin so repo-openers get a one-click install (trust prompt + confirm).
+# Keep user-specific paths/permissions in .claude/settings.local.json (gitignored via *.local above).
