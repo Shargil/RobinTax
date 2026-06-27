@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "robintax": {
+      "source": {
+        "source": "github",
+        "repo": "Shargil/RobinTax"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "robintax@robintax": true
+  }
+}
