@@ -16,24 +16,29 @@ Three layers (see [ADR-011](../../docs/decisions/ADR-011-user-journey-ledger.md)
 
 ## Workflow
 
-### 0. FIRST-RUN check (one-time, silent if already set up)
+### 0. FIRST-RUN check (one-time, always silent)
 
 The very first `/robintax` (or `/robintax:robintax` when invoked via plugin install) in a fresh install:
 
 1. `mkdir -p ~/Downloads/RobinTax` — idempotent. This is the collection folder; everything `get-doc` saves lands here.
 2. Detect platform: `node -e "console.log(process.platform)"` (or `uname`). Record once in user memory (e.g. `~/.claude/projects/<scope>/memory/platform.md`) so we don't re-detect every run.
-3. **Platform feature matrix** — surface ONCE on first run, then never again:
-   - **macOS**: full features. Apple Reminders back the cohort/auto-recheck lifecycle. `split-screen.sh` arranges editor + browser.
+3. **Internal capability matrix** — DO NOT surface to the user. This is for the agent's own routing decisions:
+   - **macOS**: Apple Reminders back the cohort/auto-recheck lifecycle. `split-screen.sh` arranges editor + browser.
    - **Windows / Linux**: degraded. No OS-level reminders (Apple Reminders is macOS-only; see Windows backend TODO at the bottom of this file). Auto-recheck only fires when the user manually runs `/robintax` and a cohort ETA has passed. No window splitting.
 
-If platform-record exists, skip step 3.
+Never print a "you're on macOS, so you get the full experience…" preamble. The user does not care which features are gated on their OS at this point — they care about getting their refund. The capability matrix only matters internally (e.g. whether `osascript`-based reminder calls are even attempted).
+
+If platform-record exists, skip step 2.
 
 ### 1. READ
 
-Read `<memory>/journey.md` and `<memory>/profile.md`. If the **profile** is missing, the user is on
-their very first run — say so in one line and route to `/intake` (it'll write the profile and seed
-the ledger; see §3 PICK NEXT). If the **ledger** is missing but the profile exists, that's
-unexpected — flag it and recover by routing to `/intake` re-walk.
+Read `<memory>/journey.md`, `<memory>/profile.md`, and check whether `<memory>/intake.draft.md` exists. Three cases:
+
+1. **Profile exists** → normal run. Continue to §1b AUTO-RECHECK.
+2. **Profile missing, draft exists** → there's a paused intake from a previous session. Print exactly one line (`Found a paused intake from <human time> ago — picking up where you left off.`) and invoke `Skill(intake)`. Intake's §1b RESUME will read the draft and offer "resume / start over." Do NOT call this a "first run."
+3. **Profile missing, no draft** → genuine first run. **Output zero characters of text before invoking `Skill(intake)`.** No "First run — let me get you set up" line, no welcome paragraph, no journey overview, no platform blurb, no "Routing you to /intake now" handoff line. The very next thing the user sees must be intake's §2 WELCOME panel itself. Intake owns the entire first-run intro surface — robintax's job here is *pure routing*, not co-narration. If you find yourself typing a sentence to the user in this case, stop and just call `Skill(intake)`. Every line saved here is ~10s of Opus latency the user doesn't spend staring at a blank terminal.
+
+If the **ledger** is missing but the profile exists, that's unexpected — flag it and recover by routing to `/intake` re-walk.
 
 ### 1b. AUTO-RECHECK PENDING DOCS
 
@@ -77,6 +82,7 @@ Naming rules:
 
 - **No abbreviations or slugs.** Write the full English name with the **Hebrew name in parentheses**. e.g. "Ramat HaNegev residency confirmation (אישור תושב — מועצה אזורית רמת הנגב)", not "RNG residency" or "residency-confirmation-section-11".
 - **Hebrew is preferred** — the user reads tax jargon faster in Hebrew. Always include it.
+- **Israeli government bodies use their native Hebrew name, not English abbreviations or transliterations.** When prose refers to the issuing body or its portal, write `רשות המיסים` (or `אתר רשות המיסים` for the site) — NEVER `ITA`, NEVER `Israeli Tax Authority`. Likewise: `ביטוח לאומי` / `אתר ביטוח לאומי`, never `BTL` or `Bituach Leumi`. Likewise: `צה"ל`, never `IDF`. This is intentionally different from the doc-naming rule above: **document names** are English-with-Hebrew-in-parens (`Form 106 (טופס 106)`); **issuing-body names** are Hebrew-only because that's how Israelis actually refer to them in daily life. Code identifiers (`ita.gov.il`, slug `bituach-leumi-payments`, schema `bituach_leumi_rates`) are code, not prose — they stay as-is. See [[feedback_no_btl_acronym]] for the full rationale.
 
 Linking rules:
 
@@ -111,6 +117,42 @@ Walk stages top-down; act on the first one that isn't `done`.
 Per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md): report and propose
 the next action first; only enter browser / worker actions after the user says go. State the one-line
 reason before each scary action.
+
+**Gate text rule — name the scary action.** Every gate that's about to open the browser MUST phrase the question as `Open <Hebrew site name> in Chrome? [Y/n]` — never the generic `Continue? [Y/n]`, never the half-named `Continue to <site>? [Y/n]`. The user has to know *which site* is about to open before they say yes. Hebrew name per §2 naming rules (`אתר ביטוח לאומי` not `BTL` or `Bituach Leumi`; `אתר רשות המיסים` not `ITA`).
+
+Examples:
+- First doc, Form 106: `Open אתר רשות המיסים in Chrome? [Y/n]` (combined with the first-collect explainer box below).
+- Second doc, Bituach Leumi payments: `Open אתר ביטוח לאומי in Chrome? [Y/n]`.
+- IDF cert: `Open אתר תשלומים והפקת אישורים של צה"ל in Chrome? [Y/n]` (or whichever exact portal name is in the playbook).
+- Council/manual-email case (no browser): use `Continue? [Y/n]` since no Chrome action — there's no site to name.
+
+**First-collect gate — special case.** When the ledger has **zero `have` docs** AND the next step is collection (i.e. this is the user's first time about to open the browser for this whole tax run), include the boxed "how it works" explainer between `Next` and `Continue?`. After the first successful collection, subsequent collect gates skip the box and just use the bare `Next step / Continue? [Y/n]` shape from §2 REPORT — the user has seen the mechanics by then.
+
+Exact shape for the first-collect gate:
+
+```
+We're missing:
+  1. <Full doc name (Hebrew name)> — <years or "once">
+  2. ...
+
+Next: <Full doc name (Hebrew name)>
+   <one-line "why this one first" reason>
+
+  ┌─ How collection works ───────────────────────────────┐
+  │  • I open YOUR Chrome — your profile, your sessions  │
+  │  • YOU log in — I never see your password            │
+  │  • I click through to download once you're in        │
+  │  • PDFs land in ~/Downloads/RobinTax/                │
+  └──────────────────────────────────────────────────────┘
+
+Open <Hebrew site name> in Chrome? [Y/n]
+```
+
+Box rules:
+- Use the box-drawing characters shown (`┌─┐│└─┘`) verbatim — do not substitute ASCII `+---+|`.
+- The box body is exactly those 4 bullets in that order. Don't paraphrase; the wording is load-bearing (per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md) — credentials never proxy through us, and the user has to know that before they type a password into a browser we just opened).
+- The gate question follows the §4 "Gate text rule" above: `Open <Hebrew site name> in Chrome? [Y/n]` — e.g. `Open אתר רשות המיסים in Chrome? [Y/n]` for Form 106. The site name MUST match the next doc's actual portal in Hebrew; never use the generic `Continue?` or `Open Chrome and start?`.
+- Show the box exactly once per "first collect ever" — if the user accepts and the ledger now has `have` rows, subsequent gates use the bare §2 REPORT shape.
 
 ### 5. WRAP-UP (end of session)
 

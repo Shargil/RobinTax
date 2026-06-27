@@ -230,7 +230,11 @@ export async function run(page: Page, deps: FlowDeps): Promise<void> {
   });
 
   explain(
-    `Waiting for the "${POST_LOGIN_LINK_NAME}" link to appear (up to 5 min). I never see your ID, password, or OTP — I'm only watching for that link, which only shows once you're inside.`,
+    `Waiting for you to log in (up to 5 min). I never see your ID, password, or OTP — I'm only watching for the "${POST_LOGIN_LINK_NAME}" link to appear.
+
+Two heads-ups about רשות המיסים:
+  • The SMS code from רשות המיסים can take more than a minute to arrive.
+  • If this is your FIRST time on the site, they ask weird-hard identity-verification questions. Be mentally prepared.`,
   );
 
   await step("wait for post-login signal", async () => {

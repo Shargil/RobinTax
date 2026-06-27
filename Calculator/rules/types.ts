@@ -42,22 +42,18 @@ export interface Surtax {
 }
 
 // ── Status-based credit-point rules ─────────────────────────────────────────
-/**
- * §39A discharged-soldier credit. The credit is annualized: 2 pts/year for
- * "long" service (≥23 months male / ≥22 months female), 1 pt/year for shorter
- * (but ≥12 months) service. Within a tax year the credit is pro-rated by
- * eligible months in the 36-month window starting the month AFTER discharge.
- * Verified against Kolzchut worked example (July 2022 discharge → 7 months in 2025).
- */
+/** §39A discharged-soldier credit. Canonical spec: `tax-rule/soldier-39a.md`. */
 export interface SoldierPointsRule {
   /** Annual entitlement when service ≥ long-service threshold (typically 2). */
   points_per_year_long_service: number;
   /** Annual entitlement when service is below long-service threshold but ≥ minimum (typically 1). */
   points_per_year_short_service: number;
-  /** Long-service threshold (full months) for males. */
+  /** Long-service threshold (full months) for IDF males. */
   min_service_months_male_long: number;
-  /** Long-service threshold (full months) for females. */
+  /** Long-service threshold (full months) for IDF females. */
   min_service_months_female_long: number;
+  /** Long-service threshold (full months) for national / civilian service (both genders). */
+  min_service_months_national_long: number;
   /** Minimum service months for any §39A eligibility. */
   min_service_months_eligibility: number;
   /** Length of the eligibility window in months, starting the month AFTER discharge. */
@@ -69,6 +65,7 @@ export interface ImmigrantPointsSchedule {
   by_year_from_aliyah: number[];
 }
 
+/** Canonical spec: tax-rule/degree-40c-40d.md. */
 export interface DegreePointsRule {
   first_degree: number;
   second_degree: number;
@@ -90,6 +87,7 @@ export interface DisabilityRule {
 }
 
 // ── Credits & discounts ────────────────────────────────────────────────────
+/** Canonical spec: tax-rule/donations-46.md. */
 export interface DonationRule {
   /** Section 46 credit rate (typically 0.35 for individuals). */
   rate: number;
@@ -129,7 +127,7 @@ export interface KerenHishtalmutRule {
   self_employed_ceiling_nis: number;
 }
 
-/** Settlement-discount mechanics for the year (the list of settlements is in ./settlements/<year>.ts). */
+/** Canonical spec: tax-rule/settlement-11.md. */
 export interface SettlementRule {
   /** Hard income ceiling on which the discount may apply (annual NIS). */
   max_income_ceiling_nis: number;
@@ -138,6 +136,7 @@ export interface SettlementRule {
 }
 
 // ── Separate-rate items ────────────────────────────────────────────────────
+/** Flat separate rates on capital-market income. Canonical spec: tax-rule/capital-gains-91-92.md. */
 export interface SeparateRates {
   interest_linked: number;
   interest_nonlinked: number;
@@ -151,8 +150,7 @@ export interface SeparateRates {
 /**
  * Mandatory-filing triggers per תקנות מס הכנסה (פטור מהגשת דין וחשבון), תשמ"ח-1988.
  * Each numeric threshold is a separate trigger: ANY one being exceeded forces filing.
- * Note: aggregated multi-employer salary falls under `gross_salary_nis` — there is
- * NO separate lower "two-employers-without-תיאום-מס" sub-threshold in the regulation.
+ * Multi-employer aggregation: see canonical spec tax-rule/multi-employer-121-164.md.
  * Verified against cpa-dray + Wikisource (2026-06-04).
  */
 export interface MandatoryFilingThresholds {

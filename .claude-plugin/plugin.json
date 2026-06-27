@@ -6,5 +6,14 @@
     "name": "Yam Shargil"
   },
   "homepage": "https://github.com/Shargil/RobinTax",
-  "repository": "https://github.com/Shargil/RobinTax"
+  "repository": "https://github.com/Shargil/RobinTax",
+  "mcpServers": {
+    "smart-replay": {
+      "command": "node",
+      "args": [
+        "--experimental-strip-types",
+        "${CLAUDE_PLUGIN_ROOT}/Collector/skill/src/server.ts"
+      ]
+    }
+  }
 }

@@ -28,6 +28,10 @@ export interface YearInput {
       discharge_year: number;
       /** 1–12. Required for B1's eligible-months-in-tax-year calculation. */
       discharge_month: number;
+      /** Defaults to 'idf' for backwards-compat. National/civilian use a 24m long-service threshold for both genders. */
+      service_track?: 'idf' | 'national' | 'civilian';
+      /** §39A: medical early discharge under 12m is treated as completed 12m → short-service tier. */
+      early_discharge_medical?: boolean;
     };
     degree?: { kind: 'first' | 'second' | 'third_or_medical'; completed_year: number };
     single_parent?: boolean;
@@ -40,6 +44,7 @@ export interface YearInput {
     months_worked: number;
     pension_employee_deposit: number;
   }>;
+  /** Taxable Bituach Leumi benefits only (§2(2) salary-substitute pots). Classifier + canonical spec: tax-rule/bituach-leumi-benefits-9.md. */
   btl_benefits: Array<{ source: string; taxable_amount: number; withheld_tax: number }>;
   investment_income: {
     interest_linked: number;
@@ -227,33 +232,30 @@ export function applySurtax(taxable: number, surtax: Surtax): number {
   return applySurtaxTraced(taxable, surtax).tax;
 }
 
-/**
- * Soldier credit points for the tax year — §39A.
- *
- * Formula (per Kolzchut deep-dive, verified worked-example):
- *   annual_entitlement = 2 if (male && service ≥ 23) || (female && service ≥ 22), else 1
- *   per_month_rate     = annual_entitlement / 12
- *   eligible_months    = count of months in this tax year that fall within
- *                        the 36-month window starting the MONTH AFTER discharge
- *   credit             = eligible_months × per_month_rate
- *
- * Worked example: male, July 2022 discharge, 30 months service:
- *   window = Aug 2022 – Jul 2025 (36 months inclusive)
- *   tax_year 2025 → eligible_months = 7 (Jan–Jul) → 7 × (2/12) = 7/6 ≈ 1.167 pts
- */
+/** §39A soldier credit. Canonical spec + formula + worked examples: `tax-rule/soldier-39a.md`. */
 export function soldierPoints(
   tax_year: number,
   gender: 'male' | 'female',
   input: NonNullable<YearInput['taxpayer']['discharged_soldier']>,
   rule: SoldierPointsRule,
 ): number {
-  const total_service = input.service_months_full + input.service_months_partial;
-  if (total_service < rule.min_service_months_eligibility) return 0;
+  const raw_service = input.service_months_full + input.service_months_partial;
+  // §39A medical-early-discharge carve-out: under 12m for health reasons counts as 12m.
+  const effective_service =
+    input.early_discharge_medical && raw_service < rule.min_service_months_eligibility
+      ? rule.min_service_months_eligibility
+      : raw_service;
+  if (effective_service < rule.min_service_months_eligibility) return 0;
 
+  const track = input.service_track ?? 'idf';
   const long_threshold =
-    gender === 'female' ? rule.min_service_months_female_long : rule.min_service_months_male_long;
+    track === 'idf'
+      ? gender === 'female'
+        ? rule.min_service_months_female_long
+        : rule.min_service_months_male_long
+      : rule.min_service_months_national_long;
   const annual_entitlement =
-    total_service >= long_threshold ? rule.points_per_year_long_service : rule.points_per_year_short_service;
+    effective_service >= long_threshold ? rule.points_per_year_long_service : rule.points_per_year_short_service;
   const per_month = annual_entitlement / 12;
 
   // Window: starts the MONTH AFTER discharge; lasts eligibility_window_months (inclusive).
@@ -279,7 +281,7 @@ export function immigrantPoints(tax_year: number, aliyah_year: number, schedule:
   return schedule.by_year_from_aliyah[idx] ?? 0;
 }
 
-/** Settlement discount (יישוב מזכה). Pro-rated by qualifying months / 12. */
+/** Canonical spec: tax-rule/settlement-11.md. */
 export function settlementDiscount(
   input: NonNullable<YearInput['taxpayer']['residency']>,
   settlements: YearSettlements,
@@ -342,7 +344,7 @@ export function donationCreditTraced(donations_nis: number, taxable_ordinary: nu
   return { credit: eligible * rule.rate, donated: donations_nis, rate: rule.rate, abs_cap, share_cap, eligible };
 }
 
-/** Donation §46 credit. Capped by absolute NIS and share of taxable income. */
+/** Donation §46 credit. Canonical spec: tax-rule/donations-46.md. */
 export function donationCredit(donations_nis: number, taxable_ordinary: number, rule: DonationRule): number {
   return donationCreditTraced(donations_nis, taxable_ordinary, rule).credit;
 }
@@ -400,7 +402,11 @@ export function pensionCreditTraced(
   };
 }
 
-/** Separate-rate tax on investment income (flat rates, not through brackets). */
+/**
+ * Separate-rate tax on investment income (flat rates, not through brackets).
+ * Canonical spec: tax-rule/capital-gains-91-92.md. NOTE: §92 loss-offsetting is
+ * NOT done here — this taxes the positive buckets as handed; netting is upstream.
+ */
 export function separateRateTax(income: YearInput['investment_income'], rates: SeparateRates): number {
   return (
     income.interest_linked * rates.interest_linked +
@@ -454,7 +460,8 @@ export function calculate(input: YearInput, rules: YearRules, settlements: YearS
   const immigrant = input.taxpayer.aliyah_year
     ? immigrantPoints(input.tax_year, input.taxpayer.aliyah_year, rules.immigrant_points.value)
     : 0;
-  const degree = input.taxpayer.degree ? rules.degree_points.value.first_degree : 0; // simplified
+  // Canonical spec: tax-rule/degree-40c-40d.md (current impl is the spec's pre-2023 simplification).
+  const degree = input.taxpayer.degree ? rules.degree_points.value.first_degree : 0;
   const single_parent = input.taxpayer.single_parent ? rules.single_parent_points.value : 0;
   const credit_points_total = base + soldier + immigrant + degree + single_parent;
   const point_value_annual = rules.point_value_annual.value;
@@ -595,8 +602,8 @@ export function calculate(input: YearInput, rules: YearRules, settlements: YearS
 
 /**
  * Mandatory-filing triggers per תקנות פטור מהגשת דין וחשבון. Returns one human
- * label per trigger that fires. Multi-employer is captured by aggregate salary
- * vs gross_salary_nis — no separate sub-threshold exists in the regulation.
+ * label per trigger that fires. Multi-employer aggregation: see canonical spec
+ * tax-rule/multi-employer-121-164.md.
  */
 export function mandatoryFilingTriggers(input: YearInput, rules: YearRules): string[] {
   const triggers: string[] = [];

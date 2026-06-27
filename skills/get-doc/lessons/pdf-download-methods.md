@@ -27,12 +27,26 @@ state.page.on('response', async (res) => {
 Write with the sandbox fs to `/tmp/x.pdf` then `mv` to `~/Downloads/RobinTax/` — the sandbox fs is scoped
 and `EPERM`s on `~/Downloads`. See [[playwright-via-playwriter-relay-broken-apis]].
 
+### 1b. Blob-tab capture (when `res.body()` returns empty)
+If method 1 sees the JSON / PDF response in flight but `res.body()` / `res.text()` returns 0 bytes through the Playwriter relay (the ITA `getfileForm106` endpoint is the canonical example), wait for the app to open the PDF as a new blob tab and read the bytes from inside that tab:
+```js
+const blobPage = context.pages()[context.pages().length - 1]   // the just-opened blob: tab
+const arr = await blobPage.evaluate(async (u) => {
+  const r = await fetch(u)                                      // same-origin fetch inside the tab, cookies attached
+  return [...new Uint8Array(await r.arrayBuffer())]
+}, blobPage.url())
+const buf = Buffer.from(arr)
+// fs.writeFileSync('/tmp/x.pdf', buf), then mv to ~/Downloads/RobinTax/
+await blobPage.close()
+```
+**This is the default for ITA** — `res.body()` through the relay is unreliable for its JSON envelopes (confirmed 2026-06-20), and ITA does NOT revoke its blobs instantly, so this path is robust. IDF revokes its blobs ~immediately; use method 1 (PDF branch) there.
+
 ### 2. `download.url()` → `page.evaluate(fetch)`  (only for STABLE server URLs)
 If the download event gives a real `https://` URL (not a `blob:`), refetch it inside the page (cookies attach):
 ```js
 const b64 = await state.page.evaluate(async (u) => { const r = await fetch(u, {credentials:'include'}); const a = await r.arrayBuffer(); return btoa(String.fromCharCode(...new Uint8Array(a))) }, download.url())
 ```
-**Do not use on `blob:` URLs** — apps often revoke them instantly (`TypeError: Failed to fetch`).
+**Do not use method 2 on `blob:` URLs unless you know the site does not revoke them** (ITA does not; IDF does). For blob tabs, prefer method 1b above — it reads inside the blob tab itself so timing is irrelevant.
 
 ### 3. `download.saveAs(path)` — **BROKEN through the relay.** Never use it. (ENOENT.)
 
@@ -49,7 +63,7 @@ await state.page.locator('[id=":NN"]').click()   // role=button[name="Download a
 
 | Site / doc | Shape | Use | Notes |
 |---|---|---|---|
-| **ITA** (`ita.gov.il`) — 106, tax confirmations | base64-in-JSON envelope (Pattern A) | method 1 (JSON branch) | frontend decodes to a `blob:` popup — unreachable from outside; grab the JSON in flight. Ref: `Collector/skill/src/flows/ita.gov.il.ts` |
+| **ITA** (`ita.gov.il`) — 106, tax confirmations | base64-in-JSON envelope (Pattern A), but `res.body()` returns empty through the relay | **method 1b (blob-tab capture)** | The Smart Replay flow at `Collector/skill/src/flows/ita.gov.il.ts` uses method 1 (JSON branch) because it runs through `playwright-core` + CDP directly (relay bypass), not the `npx playwriter` CLI. When the LLM falls back to playwriter CLI calls, use method 1b instead. ITA does not revoke the blob. |
 | **BTL** (`btl.gov.il`) — unemployment etc. | real binary, `Content-Disposition: attachment`, stable URL (Pattern B) | method 1 (pdf branch), or method 2 | Ref: `Collector/skill/src/flows/btl.gov.il.ts` |
 | **IDF** (`ishurim.prat.idf.il`) — form 830 | link has no `href`; JS fetches from S3 → wraps as `blob:` → **revokes immediately** (Pattern C) | method 1 (pdf branch) | confirmed 2026-05-29. method 2 fails here (blob revoked). |
 | **Gmail** (`mail.google.com`) — email attachments | Chrome native downloader (Pattern D) — page `response` event does NOT fire | **method 4** | confirmed 2026-06-03 (RNG residency cert reply). Method 1 wastes a call here — go straight to click → `~/Downloads/` → `mv`. |

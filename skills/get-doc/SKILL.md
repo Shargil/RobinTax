@@ -15,11 +15,30 @@ Two entry modes:
 
 The very first `/get-doc` run in a fresh install needs the Playwriter Chrome extension attached. Before the 5-phase loop:
 
+00. **Consent gate (one-time per install, shown once).** Before any technical check, show the user exactly what they're authorizing — one consolidated ask, then run smoothly per the [Gating model] (don't re-ask per step). Present verbatim and gate Y/n:
+
+    > **Before we start. Here's everything I'll do to get your documents. It all happens in front of you, in your own Chrome:**
+    >
+    > 1. **Open & click through websites.** I'll ask your permission about each site before I open it. You type your usernames and passwords. I never touch them.
+    > 2. **Save to `~/Downloads/RobinTax/`.** A new folder under Downloads where I'll read and write your documents.
+    > 3. **Bring Chrome to the front** so you can watch everything I do, side-by-side with this window.
+    > 4. **Set Apple Reminders** so when a document takes days to arrive, you get a ping when it's ready.
+    >
+    > Allow all? [Y/n]
+
+    On `n` → exit cleanly. On `Y` → proceed to the checks below. This is the broad consent; genuinely irreversible *external* effects (sending an email, submitting a gov form) are still gated per-action when they happen — see [Gating model].
+
+0. **Permission check (one-time per machine).** Read `~/.claude/settings.json`'s `permissions.allow` array. If it does NOT contain `Bash(npx playwriter@latest *)` (or a broader pattern like `Bash(npx *)`), STOP and tell the user verbatim:
+
+   > One-time setup: Claude Code needs permission to run `npx playwriter@latest *` (this drives your own Chrome to fetch your tax docs — never sees passwords). Run `/permissions` and add `Bash(npx playwriter@latest *)` to the allow list, then re-run `/get-doc`. Without this, every multi-line playwriter call will re-prompt mid-flow.
+
+   The plugin spec doesn't let us ship this permission, so it's a one-time manual step. This gate only matters for the LLM-fallback path — the Smart Replay happy path goes through the bundled `smart-replay` MCP server, which doesn't need it. We gate up-front anyway because the user might fall through to LLM and we want failures fast and cheap, not mid-flow.
+
 1. Check Playwriter is reachable: `npx playwriter@latest session new` should return a session id. If the CLI is missing, npm fetches it. If the Chrome extension is not installed yet, the command prints install instructions — relay them verbatim and stop. Expected flow:
    - Install the extension once from Chrome Web Store (link printed by playwriter).
    - Allow it to attach to your current Chrome session.
    - You'll see a yellow "Chrome is being controlled by automated software" banner — that's the extension, not an attack.
-2. Ensure `~/Downloads/RobinTax/` exists: `mkdir -p ~/Downloads/RobinTax`. Idempotent.
+2. Ensure `~/Downloads/RobinTax/` exists: `mkdir -p ~/Downloads/RobinTax`. Idempotent. <!-- CONSENT §00: file I/O location — if this path changes, update §00 bullet 2. -->
 3. On subsequent runs (session already paired, folder exists), this preflight is silent.
 
 Per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md): the user owns all logins. The skill never types passwords. If a site needs login, you log in in your own Chrome; the skill polls for the dashboard signal and resumes.
@@ -34,6 +53,8 @@ Before and after every run, this skill reads/writes the per-user journey ledger 
 - **The ledger may arrive intake-seeded.** Per [ADR-013](../../docs/decisions/ADR-013-user-profile-and-intake.md), the `intake` skill seeds `todo` rows for the docs implied by the user's profile before this skill ever runs. No behavior change — operate on `todo` rows the same way whether they were intake-seeded or accreted on first touch. If a `todo` row references a slug that has no playbook in `Collector/documents/`, treat it as `blocked` with manual instructions rather than attempting to fetch.
 
 ## Pending-doc reminders (Apple Reminders)
+
+<!-- CONSENT §00: OS integration (creates Apple Reminders) — if this is added/removed/changed, update §00 bullet 4. -->
 
 When a doc flips to `requested`, create a macOS Apple Reminder so the user gets a real OS-level ping days later — even with Claude Code closed. Governed by [ADR-012](../../docs/decisions/ADR-012-apple-reminders-for-pending-docs.md). Executable detail (osascript snippets, ETA math, announce templates) lives in [lessons/apple-reminders-cohorts.md](lessons/apple-reminders-cohorts.md) — **read it before touching this code path**.
 
@@ -63,13 +84,59 @@ When a doc flips to `requested`, create a macOS Apple Reminder so the user gets 
 First read `<memory>/journey.md` so you know this doc's current status and history. Then resolve `<doc>` to one of the files in `Collector/documents/`. Read that file in full. If a methods table exists, this is your menu. If no file exists, refuse — research first via the `knowledge-base` skill.
 
 ### 2. PLAN
-Pick a method from the table. Default to the highest-confidence row with delivery=Immediate. Tell the user:
+
+**Warn before connecting (both paths, do this FIRST).** If the resolved doc file has a `## Login difficulty` section, relay it to the user **before the first connection** — before the first `goto` on the LLM path AND before invoking `replay` on the Smart Replay path. This is a heads-up, not a gate (no Y/N): the user should know a hard login is coming before the window pops up. Items the block flags as first-time-only, skip for users who've logged into that site before.
+
+**First check Smart Replay.** Read [`Collector/skill/src/registry.ts`](../../Collector/skill/src/registry.ts)'s `DOC_TO_FLOW` map. If `<slug>` has an entry, **the plan is**: invoke the `mcp__smart-replay__replay` tool with `{site: <flow-key>}`. Announce in one line — *"Smart Replay flow exists for this doc — running it (no LLM)."* — and skip straight to EXECUTE. **Do not gate** with a Y/N prompt; the slash command itself is the consent (see [[feedback_approval_frequency]]). Don't ask the user to confirm a method when the cache is the method.
+
+**Otherwise (no flow yet for this slug), pick a method from the table.** Default to the highest-confidence row with delivery=Immediate. Tell the user:
 - Which method
 - What you'll do (one line per step)
 - Which steps are scary per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) (downloads, submits, sending emails, bank/email nav) and need y/n consent
 
 ### 3. EXECUTE
 
+**Three-way decision tree.** Pick exactly one based on PLAN:
+
+| If PLAN said… | Then EXECUTE… |
+|---|---|
+| Smart Replay flow exists for this slug | **Path A: Smart Replay** (cache hit) |
+| No flow for this slug | **Path C: LLM-driven from scratch** (cache miss — start fresh playwriter session, navigate from the playbook) |
+
+(Path B is the in-the-middle case: Path A failed and we're falling back — described inline below.)
+
+---
+
+**Path A — Smart Replay.** Invoke `mcp__smart-replay__replay` with `{site: <flow-key>}`. The MCP server auto-spawns the Playwriter relay on first call, **focuses the Chrome app + tab and runs `split-screen.sh` for you** (`bringToFrontAndSplit()` in `run-flow.ts` — happens before the first step so the user sees the flow start), then streams per-step status. On `isError: false` → success: the saved file list is in the tool result. Skip ahead to REFLECT/WRITE.
+
+**On `isError: true` — classify before falling back.** Read the error message. Two cases:
+
+1. **Precondition failure** (most common). Telltales: the error mentions a step name like `wait for post-login signal`, `wait for dashboard`, or any `waitFor` timeout; OR the user wasn't on the site when the flow started. This is NOT a flow defect — the flow couldn't see what it expected because the user wasn't ready. Recovery (no LLM hand-driving, no new playwriter sessions):
+   - One-line announce: *"Smart Replay timed out at `<stepName>` — likely waiting on you. Bringing Chrome forward; please log in / complete the action you need to do."*
+   - Force-focus Chrome via Bash: `osascript -e 'tell application "Google Chrome" to activate'`
+   - Tell the user explicitly what to do (log in, dismiss popup, etc.) and that you'll retry once they're done. Wait for their "ok" / "done" — don't busy-loop.
+   - **Re-invoke `mcp__smart-replay__replay` once.** The MCP holds nothing across calls and the user's tab state is now what the flow needs.
+   - If THAT also fails → proceed to case 2 (Path B).
+
+2. **Real flow defect** (selector throw, navigation error, anything that's not a wait-timeout). The cached flow is genuinely broken against the current DOM. This is **Path B — LLM-driven on the same live tab.** Announce *"Smart Replay step `<N>` failed: `<stepName>` — `<error>`. Falling back to LLM exploration on the live tab."* Then re-attach via the playwriter CLI to the same tab (the user's Chrome is intact — page wasn't closed) and resume from the current DOM. First action on resume: snapshot the page to learn where the broken flow left it. Don't `goto()` the start URL — the tab is already deep in the flow. **You do NOT need to re-run bringToFront + split-screen** — they already ran when the replay started.
+
+The classify-before-fallback rule is load-bearing: skipping straight to LLM exploration on a precondition failure burns minutes loading the playwriter CLI skill, creating a new session, snapshotting to confirm what the retry would have confirmed anyway, then re-calling replay. Diagnose first, retry the cheap path once, only then escalate.
+
+---
+
+**Path C — LLM-driven from scratch (no flow exists for this slug).** This is the path for any doc that isn't in `DOC_TO_FLOW`. **Do NOT call `mcp__smart-replay__replay`** — there's nothing for it to run, and the tool will reject an unknown site key. Instead:
+
+- Start a fresh playwriter CLI session (`npx playwriter@latest session new`).
+- Open the site listed in the playbook's "Where to obtain" prose.
+- Follow the FIRST ACTION CHECKLIST below (bringToFront + split-screen.sh) BEFORE the first click or snapshot.
+- Hand-drive the flow per the LLM-driven rules below.
+- On success, the WRITE phase will author a **candidate flow file** at `Collector/skill/src/flows/<domain>.candidate.ts` (§5(e)) and prompt the user to share it back via `contribute-flow` (§5(f)) — so this slow first run pays back as a fast cached run the next time.
+
+---
+
+**LLM-driven rules** (apply to both Path B and Path C). Drive Chrome via the `playwriter` skill. Hard rules below.
+
+<!-- CONSENT §00: browser control (bringToFront + move/split the Chrome window) — if this changes, update §00 bullet 3. -->
 **FIRST ACTION CHECKLIST — do this BEFORE any click/snapshot/anything else.** The single most common failure mode of this skill is silently driving Chrome in the background while the user can't see anything. The moment your first `goto()` lands on a real site (not `about:blank`), run BOTH:
 
 1. ```js
@@ -81,7 +148,7 @@ Pick a method from the table. Default to the highest-confidence row with deliver
 
 No "I'll do it after the snapshot." No "the user can see Chrome already." Do it on the first nav, every run. This overrides the playwriter "no bringToFront" default — get-doc flows are watched flows.
 
-Then drive Chrome via the `playwriter` skill. Hard rules:
+Hard rules for the LLM-driven path:
 - **User owns login + CAPTCHA + OTP** per [ADR-009](../../docs/decisions/ADR-009-user-owns-login-and-captcha.md). Never type passwords or one-time codes; ask the user to do it in their browser.
 - **Never proxy credentials** per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md).
 - **Save every collected doc to `~/Downloads/RobinTax/`** (the user's collection folder). Create it with `mkdir -p ~/Downloads/RobinTax` on first use if missing — idempotent, safe to run every time. Name files `<slug>.<ext>` (e.g. `idf-discharge-certificate.pdf`). Record the absolute path in the ledger's `File` column.
@@ -100,6 +167,15 @@ Then drive Chrome via the `playwriter` skill. Hard rules:
   i=0; until npx playwriter@latest -s <sid> -e 'let r=false;try{r=await state.page.evaluate(()=>document.body?.innerText?.includes("<DASHBOARD_TEXT>")||false)}catch(e){};console.log(r?"READY":"WAITING")' 2>&1 | grep -q READY; do i=$((i+1)); [ $i -ge 100 ] && { echo "TIMEOUT ~5min"; exit 1; }; sleep 3; done; echo "ON_DASHBOARD"
   ```
   (100 × 3s ≈ 5 min.) Tell the user to log in; the poll stops on its own.
+
+### 3b. SAME-SESSION OPPORTUNITIES (only after a successful fetch)
+
+The portal you just authenticated into may host OTHER refund-relevant things reachable in the SAME session (e.g. the ITA אזור אישי holds prior-year refund status alongside the 106). Grabbing them now — still logged in — beats a second authenticated run.
+
+1. Read the just-fetched doc's `## Same-session opportunities` section. Empty or absent → skip silently, go to REFLECT.
+2. Fire ONE consolidated `AskUserQuestion` (mirrors §5(f) — not a per-item nag): *"You're still logged into `<site>` — want me to also `<opportunity>` while we're here?"* Multi-select if there's more than one.
+3. On **yes** → pursue it in the live session (fetch the doc / read the screen), then record it in the journey ledger like any other touch.
+4. **Intake linkage (load-bearing).** An opportunity may also be governed by an intake answer the user already gave (e.g. prior-year refund status ↔ the §6 FILING SCOPE years). If intake said **yes** to the linked item, a **no** here means "not in this session" — NOT "drop it": don't mark it `n/a`, let the linked follow-up proceed through its normal path (the Calculate stage for refund status), and still fire that document's own follow-up question. The convenience shortcut never overrides an explicit intake yes.
 
 ### 4. REFLECT
 After the run, write down honestly:
@@ -128,10 +204,27 @@ Four destinations. Pick by **who needs the knowledge**:
 > **Test for (b) vs (c)**: Would a different RobinTax user benefit from this lesson if they cloned the repo? If yes → repo lesson (b). If it's about this specific user's preferences, accounts, or history → memory (c).
 > **(c) vs (d)**: (c) is stable facts/preferences about the user; (d) is the user's *current standing* (which docs are done/pending/blocked), which changes every run.
 
+**(e) Candidate Smart Replay flow** at `Collector/skill/src/flows/<domain>.candidate.ts` — **only when the LLM-driven branch succeeded AND no canonical flow exists for this slug** (per [`Collector/skill/src/registry.ts`](../../Collector/skill/src/registry.ts), `DOC_TO_FLOW` has no entry). Mine the conversation for the playwriter calls that worked (skip exploration noise — failed snapshots, debug logs, etc.) and author a `run(page, deps)` function with each landing action wrapped in `step("name", fn)` per [Collector ADR-003](../../Collector/decisions/ADR-003-recording-via-playwright-codegen.md). Export `domain` and `intent`. Then route the file through [`Collector/skill/src/sanitize.ts`](../../Collector/skill/src/sanitize.ts)'s `sanitizeFlow()` — same rules as B2/D2 — and surface any warnings to the user in (f).
+
+After writing the candidate, register it locally so this user's subsequent fetches of the same doc use the cache:
+- Add an entry to `<memory>/local-flows.md` (create the file if missing) — one line per local flow: `- <slug> → <flow-key> at flows/<domain>.candidate.ts (LLM-discovered <date>)`.
+- The next get-doc PLAN reads `<memory>/local-flows.md` AFTER reading the registry, so canonical flows always win but local candidates kick in for new sites.
+
+**(f) End-of-run contribution prompt** — **only after writing (e)**. Fire one `AskUserQuestion`:
+- **Question**: "You discovered a new clicking way to get this document! Want to help others in the community by removing personal data from the flow and sharing it (PR or email to Yam)?"
+- **Header**: `Share flow`
+- **Option 1 (default, picked on Enter)**: "Yes, sanitize and share (Recommended)" — walks through sanitization review, then opens a PR via `gh` if installed, else saves a local file with sharing instructions.
+- **Option 2**: "No, keep it local only" — candidate stays at `flows/<domain>.candidate.ts` for this user only.
+
+If the user picks "Yes" → invoke the `/robintax:contribute-flow <domain>` skill inline. If "No" → silent exit; the candidate flow still works locally for them.
+
+> **Why an active question, not a passive nudge:** they just succeeded at the actual task (got their doc). That's the moment to ask — answer is fresh, friction is lowest. A passive "by the way, you could share this" line would be ignored.
+
 ## Gating model
 
 Refines [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) for this skill. The user wants to feel in control without being nagged — one approval, not a hundred.
 
+<!-- CONSENT §00: website navigation/clicking — per-site naming before opening is §00 bullet 1; if that policy changes, update §00. -->
 - **One consent, at PLAN.** State the method + the steps + which (if any) are irreversible-external, and ask once. That go-ahead authorizes the whole planned run: opening the site, login, navigation, reading, and downloading the user's own document.
 - **Run smoothly after go.** Do not stop to ask before each navigate/click/download. Narrate briefly (one line) but keep moving.
 - **Re-gate only NEW irreversible external effects** not covered by the plan: sending an email on the user's behalf, submitting a form to a government body, a payment. Show the final artifact (e.g. the email draft) and let the user perform the irreversible click themselves.
@@ -180,29 +273,37 @@ Refines [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md
 ## Playbook — <Email fallback method>
 <same shape as above>
 
+## Login difficulty
+<Heads-up the agent MUST relay before the first connection to this site (per §2 PLAN): what's hard about getting in — OTP latency, first-time identity-verification gauntlet, lockout-after-N-attempts, smart-card needs, etc. Flag first-time-only items so repeat users aren't over-warned. Omit the section entirely if login is trivial.>
+
+## Same-session opportunities
+<Adjacent refund-relevant things reachable in the SAME authenticated session as this doc's primary method. One bullet each: what it is, where in the portal, doc-vs-oracle-signal, and any **Intake-linked** item it maps to. Omit the section entirely if there are none. Consumed by §3b.>
+
 ## Caveats
 - General quirks that apply regardless of method.
 ```
 
 ## Sanitization (before writing ANY playbook content to disk)
 
-Scrub these from snippets, URLs, console output, and prose:
+Scrub these from snippets, URLs, console output, and prose. The same table is enforced by [`Collector/skill/src/sanitize.ts`](../../Collector/skill/src/sanitize.ts) for Smart Replay flow files (auto-applied by the dev-only `record-flow` skill and the shipped `contribute-flow` skill).
 
-| Pattern | Replacement |
-|---|---|
-| 9-digit Israeli ID (`\b\d{9}\b` in context) | `<ID>` |
-| Phone (`05\d-?\d{7}` / `+9725...`) | `<PHONE>` |
-| Email addresses (user's, not service mailboxes like `ilant@rng.org.il`) | `<EMAIL>` |
-| OTP codes (4–8 digits in OTP context) | `<OTP>` |
-| Auth URL params (`code=`, `token=`, `state=`, `sid=`, session ids) | strip value |
-| User's full name / first name when echoed by sites | `<NAME>` |
-| DOB (any format) | `<DOB>` |
-| Parent first names | `<PARENT>` |
-| Home address + מיקוד | `<ADDRESS>` |
+| Pattern | Replacement | Notes |
+|---|---|---|
+| Employer tik (9-digit number after `תיק`/`תיק ניכויים`) | `<TIK>` | Scrub first — overlaps with the generic ID rule below. |
+| 9-digit Israeli ID (`\b\d{9}\b` in context) | `<ID>` | Runs after tik so employer ids land in the more specific bucket. |
+| Phone (`05\d-?\d{7}` / `+9725...`) | `<PHONE>` | |
+| Email addresses (user's, not service mailboxes like `ilant@rng.org.il`) | `<EMAIL>` | |
+| OTP codes (4–8 digits in OTP context, or any `.fill()` whose surrounding text matches `/(password|otp|code|סיסמה|אימות)/i`) | `<OTP>` / `<STRIPPED>` | |
+| Auth URL params (`code=`, `token=`, `state=`, `sid=`, `session=`, session ids) | strip value | |
+| User's full name / first name when echoed by sites OR appearing in selector text | `<NAME>` | Hard-fail in flow files — refuse to ship until the reviewer renames the selector. Names in selectors are the worst leak vector. |
+| DOB (any format) | `<DOB>` | |
+| Parent first names | `<PARENT>` | |
+| Home address + מיקוד | `<ADDRESS>` | |
+| High-entropy alphanumeric tokens (24+ chars) | flag, don't auto-replace | Likely session tokens or aria-refs; a human must check. |
 
 **Keep**: service mailboxes (e.g. `ilant@rng.org.il`), public council/portal URLs, generic ADR/section refs.
 
-Quick check after writing: `grep -nE '\b\d{9}\b|05\d-?\d{7}|[\w.]+@(?!rng|piba|gov|taxes)' <file>` — should return nothing.
+Quick check after writing: `grep -nE '\b\d{9}\b|05\d-?\d{7}|[\w.]+@(?!rng|piba|gov|taxes|btl)' <file>` — should return nothing. For flow files specifically, `sanitize.ts`'s `leakCheck()` performs this check programmatically as the last gate before any PR/share.
 
 ## When the run is over
 
@@ -220,3 +321,5 @@ Generalizable lessons learned from runs. Read these *before* PLAN if the doc inv
 ## Self-edit rule
 
 If during a run you learn a lesson that applies to **this skill itself** (the loop, the gates, the file formats), edit this file directly. If the lesson is generalizable across documents but is *content* (not skill mechanics), write a new file under `lessons/` and add an entry to the index above. Then mention the change in your final message: "Updated SKILL.md / lessons/...". Keep SKILL.md under ~200 lines.
+
+**Consent-gate invariant.** If you add, remove, or change a user-visible system side effect — file I/O location, OS integration (Apple Reminders et al.), browser control, or a network send on the user's behalf — you MUST update the §00 consent gate to match. The side-effect sites are marked inline with `<!-- CONSENT §00: … -->`; keep those markers and the gate in sync.

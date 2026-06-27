@@ -1,6 +1,6 @@
 # Payment Confirmations from National Insurance (אישורי תשלום מביטוח לאומי)
 
-**What it is**: Confirmations of payments such as unemployment benefits (דמי אבטלה), maternity benefits (דמי לידה), work injury benefits (דמי פגיעה בעבודה), reserve duty pay (דמי מילואים), pregnancy preservation (שמירת היריון), or disability allowance (קצבת נכות). All are taxable income — but sometimes more tax was withheld than required.
+**What it is**: Confirmations of payments such as unemployment benefits (דמי אבטלה), maternity benefits (דמי לידה), work injury benefits — short-term (דמי פגיעה בעבודה), reserve duty pay (תגמולי מילואים), pregnancy preservation (שמירת היריון), old-age pension (קצבת זיקנה), or disability allowance (קצבת נכות). Tax treatment varies by benefit type — see classifier table in [`tax-rule/bituach-leumi-benefits-9.md`](../../tax-rule/bituach-leumi-benefits-9.md). Short-term salary-substitute benefits (maternity, unemployment, reserve, work-injury, pregnancy-preservation) are taxable under §2(2) and frequently over-withheld → refund. Long-term subsistence pensions (general disability under §9(5), work-injury permanent under §9(7א), child allowance under §9(17)) are exempt and never enter the return.
 
 ## Where to obtain
 

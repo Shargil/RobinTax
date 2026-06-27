@@ -85,6 +85,7 @@ export const rules: YearRules = {
       points_per_year_short_service: 1,
       min_service_months_male_long: 23,
       min_service_months_female_long: 22,
+      min_service_months_national_long: 24,
       min_service_months_eligibility: 12,
       eligibility_window_months: 36,
     },
@@ -93,9 +94,7 @@ export const rules: YearRules = {
 
   immigrant_points: { value: { by_year_from_aliyah: [3, 2, 1] }, cite: 'madrich-2025' },
 
-  // BUG (flagged 2026-06-10): same issue as 2024.ts — `eligible_years_post_completion: 1` is
-  // the pre-2023 rule. Post-2023 grads get up to 3 years (BA) / 2 (MA) / 2 (PhD-direct).
-  // See note in 2024.ts and `Intake/branches/degree.md`.
+  // Canonical spec: tax-rule/degree-40c-40d.md
   degree_points: {
     value: { first_degree: 1, second_degree: 0.5, third_or_medical: 1, eligible_years_post_completion: 1 },
     cite: 'madrich-2025',

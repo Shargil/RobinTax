@@ -23,6 +23,9 @@ Add a per-user **profile** as the second durable artifact (alongside the journey
 - **Re-intake** is a full re-walk. Profile holds one current state; no history. Existing `have`-status docs in the ledger are preserved across re-intakes.
 - **Intake stage in the journey ledger:** the `## Stages` table grows from `Collect → Calculate → File` to `Intake → Collect → Calculate → File`. `robintax`'s top-down PICK NEXT routes to whichever stage isn't `done`, so first-run users land on Intake and returning users skip straight to Collect with no special case.
 - **Profile drives ledger seeding.** When intake completes, it seeds the `## Documents` table with the docs implied by the profile × `Intake/required-docs-matrix.md` × declared filing years. Replaces the accrete-as-you-go default for the docs intake knows about; accretion remains for surprise docs that show up later.
+- **Intake structure (updated 2026-06-19):** intake runs as a flat eligibility **checklist** rendered up front, then a batched follow-up phase. The checklist surface lives at [`Intake/checklist.md`](../../Intake/checklist.md) — one line per selectable item, each mapped to a `tax-rule/<slug>.md` spec (or `none` for v2-stubs). The walker shows multi-select `AskUserQuestion` panels of 4 items each in a continuous run; the user ticks everything that might apply. Follow-ups for each checked item are then pulled from `tax-rule/<slug>.md § Intake § Follow-ups` and fired in one packed batch (no Read/Bash/exploration between answers), with question text prefixed `{Category} {i}/{N}: ...`. Replaces the previous per-branch walker over `Intake/branches/`; that directory has been deleted.
+- **Disqualifier soft-gate:** the checklist marks scope-breakers (`osek`, `controlling_shareholder`, `non_resident`, `foreign_assets_1_5m`, `kibbutz_member`) with `(disqualifier)`. If any are checked, the walker confirms with a yes/no panel; on confirm, intake writes a partial profile with a `## Disqualified` section and short-circuits with a "RobinTax v1 doesn't cover your case yet" message. No follow-ups, no ledger seeding.
+- **v2-stub items:** items whose `tax-rule:` is `none` are recorded in the profile as plain `yes` (the checkbox is the gate) but ask no follow-ups — the calculator doesn't apply them yet. Promoting an item = writing `tax-rule/<slug>.md` and flipping the checklist line.
 
 ## Why
 
@@ -40,8 +43,8 @@ The `unknown` tri-state is what makes the intake actually completable. A binary 
 ## Consequences
 
 - **Easier:** `get-doc` skips docs the profile rules out as `n/a`; `calc-refund` populates its typed rule inputs from one place; `robintax` can finally compute per-year readiness ([ADR-011](ADR-011-user-journey-ledger.md) TODO unblocks).
-- **Easier:** adding a new eligibility branch is a markdown file in `Intake/branches/` — no skill changes.
-- **Harder:** intake adds a step before the user gets anything fetched. Mitigated by batched `AskUserQuestion` panels (2–4 questions per round-trip) and a `"I don't know"` escape that prevents the user from getting stuck.
+- **Easier:** adding a new selectable eligibility item is one line in [`Intake/checklist.md`](../../Intake/checklist.md). Adding the calc + follow-ups for it is one `tax-rule/<slug>.md` spec — no skill changes.
+- **Harder:** intake adds a step before the user gets anything fetched. Mitigated by the flat checklist (the user sees the full surface up front, not gated one branch at a time) and the packed follow-up batch (no exploration between panels), plus the `"I don't know"` escape that prevents the user from getting stuck.
 - **Tradeoff:** profile is per-machine and not version-controlled, same as the ledger. Acceptable for v1 (single user); revisit with multi-device.
 - **Tradeoff:** intake and the required-docs matrix must stay in sync with the `Collector/documents/` catalog. Drift means intake seeds non-existent doc slugs. Owned by the intake service's local convention.
 
@@ -51,4 +54,5 @@ The `unknown` tri-state is what makes the intake actually completable. A binary 
 - [ADR-010](ADR-010-explain-and-gate-scary-actions.md) — intake gates once at the top (the preamble), then runs the batch without per-question re-confirmation.
 - [ADR-011](ADR-011-user-journey-ledger.md) — the ledger contract this extends. Intake is the new first stage; profile is the new sibling artifact.
 - `intake` skill (`skills/intake/`) — sole writer.
-- `Intake/` service — branch definitions and required-docs matrix.
+- `Intake/` service — checklist surface and required-docs matrix.
+- `tax-rule/` — per-rule canonical specs; `## Intake` section is the follow-up source for items wired to a spec.

@@ -9,12 +9,16 @@
 
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
+import { execSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { chromium, type Page } from "playwright-core";
 import { createStep } from "./step.ts";
 import type { Flow, FlowDeps, StepError } from "./types.ts";
 
 import * as itaFlow from "./flows/ita.gov.il.ts";
 import * as btlFlow from "./flows/btl.gov.il.ts";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 export const FLOWS: Record<string, Flow> = {
   ita: itaFlow,
@@ -43,6 +47,69 @@ export interface RunFlowResult {
 function pickPage(pages: Page[]): Page {
   const real = pages.find((p) => !p.url().startsWith("chrome-extension://"));
   return real ?? pages[0];
+}
+
+// Force-focus the user's Chrome and (on macOS) split-screen editor + browser
+// so the user can see the flow start and act on it (log in, click OTP, etc.).
+//
+// Three-step ritual, in this order:
+//   1. osascript activate — moves the Chrome APP to the foreground. Required
+//      because page.bringToFront() only switches between Chrome's tabs; if
+//      Chrome itself is hidden behind the terminal, the user still can't see
+//      anything. This was a real bug surfaced 2026-06-21.
+//   2. page.bringToFront() — picks the right tab within Chrome.
+//   3. split-screen.sh — arranges editor + Chrome side-by-side.
+//
+// Runs SYNCHRONOUSLY with error capture and emits a clear failure note for
+// each sub-step. The previous detached/silent version masked failures and
+// left users watching a black-box timeout.
+async function bringToFrontAndSplit(
+  page: Page,
+  emit: (s: string) => void,
+): Promise<void> {
+  // 1. Activate Chrome app (macOS-only; no-op elsewhere).
+  if (process.platform === "darwin") {
+    try {
+      execSync(`osascript -e 'tell application "Google Chrome" to activate'`, {
+        stdio: "ignore",
+        timeout: 3000,
+      });
+      emit(`  · Chrome activated (osascript)\n`);
+    } catch (err) {
+      emit(
+        `  ! couldn't activate Chrome via osascript: ${(err as Error).message}\n`,
+      );
+    }
+  }
+
+  // 2. Switch to the right tab within Chrome.
+  try {
+    await page.bringToFront();
+    emit(`  · target tab focused\n`);
+  } catch (err) {
+    emit(
+      `  ! page.bringToFront() failed: ${(err as Error).message} (flow will still run, but you may not see the tab)\n`,
+    );
+  }
+
+  if (process.platform !== "darwin") return;
+
+  // 3. Split-screen editor + Chrome.
+  // CLAUDE_PLUGIN_ROOT is set when the MCP server runs inside the plugin;
+  // when run standalone (`npm run flow`) we walk up to the repo root.
+  const root = process.env.CLAUDE_PLUGIN_ROOT ?? path.resolve(HERE, "../../..");
+  const script = path.join(root, "skills", "get-doc", "scripts", "split-screen.sh");
+  emit(`  · split-screen script: ${script}\n`);
+  const result = spawnSync("bash", [script], { encoding: "utf8", timeout: 5000 });
+  if (result.error) {
+    emit(`  ! split-screen.sh failed to spawn: ${result.error.message}\n`);
+  } else if (result.status !== 0) {
+    emit(
+      `  ! split-screen.sh exited ${result.status}: ${(result.stderr || result.stdout || "").trim()}\n`,
+    );
+  } else {
+    emit(`  · split-screen ok\n`);
+  }
 }
 
 async function listPdfs(dir: string): Promise<string[]> {
@@ -134,7 +201,10 @@ export async function runFlow(
     const page = pickPage(pages);
     emit(`→ Attached to: ${page.url()}\n`);
     emit(`→ Running flow: ${flow.domain} — ${flow.intent}\n`);
-    emit(`→ Output dir: ${outDir}\n\n`);
+    emit(`→ Output dir: ${outDir}\n`);
+    emit(`→ Focusing Chrome + split-screening (macOS)…\n`);
+    await bringToFrontAndSplit(page, emit);
+    emit(`\n`);
 
     const step = createStep();
     const deps: FlowDeps = {

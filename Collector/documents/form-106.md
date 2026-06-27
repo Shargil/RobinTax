@@ -6,13 +6,20 @@
 
 | Method | Confidence | Delivery | Auth | Cost | Last attempt |
 |---|---|---|---|---|---|
-| ITA personal area — bulk download for last 6 years, all employers | high | immediate | gov.il login (ID + password or smart-card) | free | — |
+| ITA personal area — bulk download for last 6 years, all employers | high | immediate | gov.il login (ID + password or smart-card) | free | 2026-06-25 ✓ |
 | Employer payroll portal (Michpal / Hilan / Synel / Malam / org HR site) | high | immediate | per-employer SSO / portal login | free | — |
 | Direct request to employer HR / payroll | medium | days (manual) | none | free | — |
 | Formal ITA query for inactive/closed employer (פניה לרשות המסים) | medium | weeks | gov.il login + written request | free | — |
 | Ministry of Labor / labor court (employer non-compliant or insolvent) | low | months | written claim | free | — |
 
 > Confidence reflects general reliability, not user-specific success. The ITA bulk path only contains 106s that the employer actually reported to שע"מ — most large employers comply, but tiny employers or off-the-books pay may be missing and require the employer-direct fallback.
+
+## Login difficulty
+
+**Relay this before the first connection to רשות המיסים (get-doc §2 PLAN).** The ITA login is the hardest gate in the whole flow — set expectations before the window opens:
+
+- **SMS OTP latency** — the code from רשות המיסים can take more than a minute to arrive. The flow's 5-minute login window accommodates this; tell the user up front so they don't request a second code.
+- **First-time signup (first-timers only)** — after the OTP, the site asks weird-hard identity-verification questions (driver's license, recent banking, past tax data), with limited attempts before lockout. Returning users skip this — warn first-timers so they're mentally prepared.
 
 ## Where to obtain
 
@@ -52,26 +59,23 @@ When the company is closed or HR is unreachable AND the ITA list doesn't contain
 
 ## Playbook — ITA personal area (bulk)
 
-**Last verified:** _(not yet executed via this skill)_.
+**Implemented as a Smart Replay flow** at [`Collector/skill/src/flows/ita.gov.il.ts`](../skill/src/flows/ita.gov.il.ts).
 
-### Pre-reqs
-- User logged into the ITA personal area in their own Chrome (gov.il auth completed by them per [ADR-009](../../docs/decisions/ADR-009-user-owns-login-and-captcha.md)).
-- Target tab playwriter-attached.
-- Downloads gated on y/n with one-line reason per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md).
+The flow file is the executable, source-of-truth spec for the click sequence — it handles the 7-year loop (current year + 6 back), multi-employer rows per year, the ITA SPA's accordion expand/collapse pattern, post-login polling (5-min cap), and the base64-in-JSON PDF capture (ADR-002 hybrid: UI click for consent, response listener for the bytes). PDFs land at `Collector/skill/downloads/ita/106__<year>[_<n>].pdf`. To inspect, edit, or debug the click sequence, read [`flows/ita.gov.il.ts`](../skill/src/flows/ita.gov.il.ts) directly.
 
-### Steps (high-level, to be filled in on first run)
-
-1. **Land on the income-tax personal area**: `https://secapp.taxes.gov.il/logon/LogonPoint/tmindex.html`. If not authenticated → ask the user to log in (we never type ID/password/OTP per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md)).
-2. **Locate the "טופס 106" entry** (typically bottom-left of the post-login landing page). Snapshot first to capture the exact selector and link text.
-3. **Enumerate available years** — the listing page shows one row per (year, employer) pair. Capture the list before downloading anything.
-4. **Filter to 2020–2025**, gate the download batch with the user, then download each PDF — likely a base64-in-JSON payload (see [memory `pdf_acquisition_two_patterns`](../../.claude/projects/-Users-shargil-Documents--------------2026-05-14----------RobinTax/memory/project_pdf_acquisition_two_patterns.md), the ITA pattern) — saving to a per-user directory.
-5. **Reconcile against the user's known employer list**: any year/employer pair the user expected but isn't in the list → flag for the employer-direct / payroll-portal fallback.
-
-> First-run details (exact selectors, the JSON envelope shape for the PDF, any pagination) get filled in here after execution. Until then, this playbook is intentionally skeletal — Playwriter snapshots beat speculation.
+The prose above (Methods, Where to obtain, Caveats) is the human-readable doc the agent reads to understand *what* this document is; the flow file is *how* the agent fetches it. When get-doc handles `form-106`, it routes through the [Smart Replay MCP server's `replay({site: "ita"})`](../skill/src/server.ts) tool — no LLM tokens on the happy path. Only on flow failure does the get-doc skill fall through to its LLM-driven exploration loop.
 
 ## Playbook — Employer payroll portal
 
 _Per-vendor playbooks (Michpal, Hilan, Synel, Malam) will be split into their own subsections after first contact. Each one has a different login flow and different "annual 106" link — generalizing before seeing them risks getting it wrong._
+
+## Same-session opportunities
+
+While authenticated in the ITA אזור אישי for the 106, other refund-relevant things on the same portal are reachable in the same session — cheaper to check now than to re-auth later. Offered by get-doc §3b after a successful 106 fetch.
+
+- **Prior-year refund / balance status (החזרי מס ויתרות משנים קודמות)** — *oracle signal, not a downloadable doc.* The personal area surfaces pending refunds, credits, and balances רשות המסים already holds for prior tax years. Reachable from the same אזור אישי landing as the 106 link. Worth a peek for the years in the user's filing scope: it tells us whether a refund is already queued or a balance is owed before the Calculator runs. Feeds the **Calculate** stage as a cross-check, not the document collection. **Intake-linked to §6 FILING SCOPE** — if the user picked years to check, a "no" to grabbing it in-session does NOT drop it; the Calculate stage still checks those years.
+
+> Scope note (v1): only the prior-year refund-status peek is offered here. Donation receipts (§46) are also reachable in-session, but stay out until the `donations` branch graduates from its v2 stub (`tax-rule: none`).
 
 ## Caveats
 
@@ -80,6 +84,7 @@ _Per-vendor playbooks (Michpal, Hilan, Synel, Malam) will be split into their ow
 - **Months-worked check**: 106 lists חודשי עבודה — relevant for credit-point math. If a 106 shows partial-year (e.g. 6 months), the user probably had another employer that year — go look for a second 106.
 - **Pension and credit-point fields**: the 106 also carries the pension-deposit totals that feed Form 135. Don't treat the 106 purely as a salary summary.
 - **2026 reform note**: digital donation-receipt rule starts 1/1/2026 (Section 46) — unrelated to 106, but mentioned often in the same refund-prep blog posts; do not conflate.
+- **Login is hard** — OTP latency + first-time identity-verification gauntlet. Promoted to its own `## Login difficulty` section above (surfaced before connection per get-doc §2).
 
 ## Related
 

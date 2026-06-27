@@ -5,14 +5,20 @@
 // flow's transcript and saved-file list are returned to Claude Code as the
 // tool result.
 //
-// v1 scope: NO auto-spawn of the relay (user runs `npm run relay`
-// separately), NO heal-back round-trip, NO session map. The replay tool
-// is one-shot: it either completes or returns an error.
+// Auto-spawns the Playwriter relay on first `replay` call (idempotent —
+// checks port 19988 first) and kills it on process exit. No heal-back
+// round-trip / session map in v1 — the replay tool is one-shot: it either
+// completes or returns an error. On error, the user's Chrome tab is left
+// in place so a follow-up LLM-driven flow can re-attach via the playwriter
+// CLI and resume from the live DOM state.
 //
-// Install (local dev):
+// Install: bundled in the robintax plugin's mcpServers — no manual setup.
+// For standalone dev:
 //   claude mcp add smart-replay -- node --experimental-strip-types \
 //     /path/to/Collector/skill/src/server.ts
 
+import { spawn, type ChildProcess } from "node:child_process";
+import * as net from "node:net";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -20,6 +26,90 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { runFlow, FLOWS } from "./run-flow.ts";
+
+const RELAY_HOST = "127.0.0.1";
+const RELAY_PORT = 19988;
+const RELAY_READY_TIMEOUT_MS = 15_000;
+const RELAY_POLL_INTERVAL_MS = 250;
+
+let relayChild: ChildProcess | null = null;
+
+function isPortOpen(host: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(500);
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once("error", () => resolve(false));
+    socket.connect(port, host);
+  });
+}
+
+async function waitForRelayReady(deadline: number): Promise<boolean> {
+  while (Date.now() < deadline) {
+    if (await isPortOpen(RELAY_HOST, RELAY_PORT)) return true;
+    await new Promise((r) => setTimeout(r, RELAY_POLL_INTERVAL_MS));
+  }
+  return false;
+}
+
+async function ensureRelayRunning(): Promise<void> {
+  if (await isPortOpen(RELAY_HOST, RELAY_PORT)) return;
+  process.stderr.write(
+    `→ Playwriter relay not running on ${RELAY_HOST}:${RELAY_PORT} — spawning…\n`,
+  );
+  relayChild = spawn(
+    "npx",
+    ["playwriter@latest", "serve", "--host", RELAY_HOST],
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: false,
+    },
+  );
+  relayChild.stdout?.on("data", (b) =>
+    process.stderr.write(`[relay] ${b.toString()}`),
+  );
+  relayChild.stderr?.on("data", (b) =>
+    process.stderr.write(`[relay] ${b.toString()}`),
+  );
+  relayChild.once("exit", (code) => {
+    process.stderr.write(`[relay] exited with code ${code}\n`);
+    relayChild = null;
+  });
+  const ready = await waitForRelayReady(Date.now() + RELAY_READY_TIMEOUT_MS);
+  if (!ready) {
+    throw new Error(
+      `Playwriter relay failed to come up on ${RELAY_HOST}:${RELAY_PORT} within ${RELAY_READY_TIMEOUT_MS}ms. Check that 'npx playwriter@latest serve' works manually.`,
+    );
+  }
+  process.stderr.write(`→ Relay ready on ${RELAY_HOST}:${RELAY_PORT}\n`);
+}
+
+function shutdownRelay(): void {
+  if (relayChild && relayChild.pid && !relayChild.killed) {
+    try {
+      relayChild.kill("SIGTERM");
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+process.on("exit", shutdownRelay);
+process.on("SIGINT", () => {
+  shutdownRelay();
+  process.exit(130);
+});
+process.on("SIGTERM", () => {
+  shutdownRelay();
+  process.exit(143);
+});
 
 const FLOW_KEYS = Object.keys(FLOWS);
 
@@ -42,7 +132,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Prereqs (user-driven, one-time per session):",
         "  1. Playwriter Chrome extension installed (https://chromewebstore.google.com/detail/playwriter-mcp/jfeammnjpkecdekppnclgkkffahnhfhe).",
         "  2. Target tab open in the user's Chrome with the Playwriter extension icon clicked green.",
-        "  3. Playwriter relay running: `npm run relay` in a separate terminal (the skill does not yet auto-spawn it).",
+        "  3. Playwriter relay is auto-spawned on the first replay call (no manual start needed).",
         "",
         "If the user isn't logged in to the target site, the flow waits up to 5 minutes for the post-login signal — they log in manually in the browser.",
         "Downloaded files land in Collector/skill/downloads/<site>/.",
@@ -83,6 +173,16 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
           text: `Missing or invalid 'site'. Allowed: ${FLOW_KEYS.join(", ")}.`,
         },
       ],
+      isError: true,
+    };
+  }
+
+  try {
+    await ensureRelayRunning();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      content: [{ type: "text", text: msg }],
       isError: true,
     };
   }

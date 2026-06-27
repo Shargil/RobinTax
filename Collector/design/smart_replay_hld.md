@@ -29,8 +29,12 @@ numeric-scoring layer.
 
 ## Install
 
+The smart-replay MCP server is bundled with the RobinTax plugin — `mcpServers` field in [`.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json) registers it automatically on plugin install. No `claude mcp add` step.
+
+For standalone (non-plugin) development:
 ```bash
-claude mcp add smart-replay npx smart-replay-skill
+claude mcp add smart-replay -- node --experimental-strip-types \
+  /path/to/Collector/skill/src/server.ts
 ```
 
 First run prompts the user for two one-time setup steps:
@@ -40,9 +44,7 @@ First run prompts the user for two one-time setup steps:
 2. **Click the extension icon on the target tab.** The icon turns green when
    Playwriter is attached to that tab.
 
-The skill **auto-spawns the Playwriter relay** (`npx playwriter serve --host
-127.0.0.1`) as a subprocess on the first MCP tool call and shuts it down on
-disconnect — the user never runs it manually.
+The skill **auto-spawns the Playwriter relay** (`npx playwriter@latest serve --host 127.0.0.1`) as a subprocess on the first MCP tool call (idempotent — checks port 19988 first) and kills it on process exit / SIGTERM / SIGINT — the user never runs it manually. See [`Collector/skill/src/server.ts`](../skill/src/server.ts) `ensureRelayRunning()`.
 
 No credentials to configure. Token usage flows through Claude Code's existing
 session — no separate `ANTHROPIC_API_KEY` needed.
@@ -77,6 +79,8 @@ What the skill must do:
 
 There is no runtime recorder. New site flows are authored by a developer
 using `playwright codegen` and committed to this repo as TypeScript modules.
+The dev-only [`record-flow`](../../.claude/skills/record-flow/SKILL.md) skill
+automates this ritual: launches codegen, runs the [`sanitize.ts`](../skill/src/sanitize.ts) sanitizer, surfaces manual-review prompts, scaffolds the flow module, and registers it in [`registry.ts`](../skill/src/registry.ts) + [`run-flow.ts`](../skill/src/run-flow.ts).
 
 ### The recording ritual
 
@@ -183,16 +187,23 @@ There is no separate JSON cache to write back to. **The flow file IS the cache.*
 
 ---
 
+## v1.5 — Heal-back round-trip (not yet built)
+
+The session lifecycle described above is **designed but not implemented**. The current code in [`server.ts`](../skill/src/server.ts) returns one-shot `replay` results — success or error — without exposing `continue(sessionId)` / `abort(sessionId)` or capturing screenshot + a11y on failure.
+
+The simpler v1 substitute: **`get-doc`'s LLM-fallback branch** ([skills/get-doc/SKILL.md](../../skills/get-doc/SKILL.md) §EXECUTE). When `replay` fails, the user's Chrome tab is left intact (the page is held in the user's browser, not the MCP process). `get-doc` re-attaches via the `playwriter` CLI to the same live tab and resumes from the current DOM state. On successful LLM resume for a domain without a canonical flow, get-doc writes a candidate flow at `flows/<domain>.candidate.ts` (§5(e)) and offers to ship it back via [`contribute-flow`](../../skills/contribute-flow/SKILL.md) (§5(f)) — a slower, dumber heal-back-by-replacement compared to the surgical step-patch the HLD describes.
+
+Wire up real heal-back when the simpler path proves too expensive in tokens.
+
 ## Deferred to v2 — see `backlog.md`
 
-The following pieces from the original HLD are deferred until we have
-repeat-failure telemetry from real users:
+The following pieces are deferred until we have repeat-failure telemetry from real users:
 
 - **DOM hash gate** — fingerprint before replay.
 - **Numeric confidence scoring + decay** — `× 1.05 + 0.02`, `× 0.85 − 0.05`, `× 0.99/day`. Formulas live in [`confidence_scoring.md`](./confidence_scoring.md) (still the v2 target).
 - **Multi-tier selector fallback** — XPath → aria-ref → text → fuzzy CSS hierarchy. v1 uses whatever locator the flow module wrote.
 - **Learning loop** — score-bump on success, score-decay on failure, alert when LLM also fails.
-- **Remote update channel** for flow modules.
+- **Remote update channel** for flow modules (note: `contribute-flow` partially addresses this — user-discovered flows now flow upstream via PR, though there's no auto-pull on the consumer side).
 
 See [`../backlog.md`](../backlog.md) for full descriptions and revisit triggers.
 

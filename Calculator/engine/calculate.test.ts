@@ -79,63 +79,84 @@ describe('soldierPoints (§39A — annualized + eligible-months pro-rata)', () =
     discharge_month,
   });
 
-  it('zero outside the 36-month window (discharged Jan 2020, claim 2024)', () => {
+  // Test names contain a `[<id>]` tag matching the canonical worked-examples table in
+  // tax-rule/soldier-39a.md. Drift test asserts every spec id has a matching test.
+
+  it('[outside-window]', () => {
     assert.equal(soldierPoints(2024, 'male', fullService(2020, 1), rule), 0);
   });
 
-  it('zero when service < 12 months (below §39A eligibility floor)', () => {
+  it('[floor]', () => {
     const pts = soldierPoints(2025, 'male', {
       service_months_full: 10, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
     }, rule);
     assert.equal(pts, 0);
   });
 
-  it('B1 Kolzchut worked example: male, 30m service, July 2022 discharge → 2025 = 7/6 pts', () => {
-    // Window: Aug 2022 – Jul 2025 (36 months). Tax year 2025: Jan–Jul = 7 months.
-    // Long service (≥23) → 2 pts/year → 7 × (2/12) = 7/6 ≈ 1.1667.
+  it('[kolzchut-b1]', () => {
     const pts = soldierPoints(2025, 'male', {
       service_months_full: 30, service_months_partial: 0, discharge_year: 2022, discharge_month: 7,
     }, rule);
     assert.ok(Math.abs(pts - 7 / 6) < 1e-9, `expected 7/6, got ${pts}`);
   });
 
-  it('B1 PDF worked example: male, 30m service, 31.8.2021 discharge → tax year 2024 = 8 months', () => {
-    // Window: Sep 2021 – Aug 2024 (36 months). Tax year 2024: Jan–Aug = 8 months.
-    // 8 × (2/12) = 8/6 ≈ 1.333.
+  it('[madrich-b1]', () => {
     const pts = soldierPoints(2024, 'male', {
       service_months_full: 30, service_months_partial: 0, discharge_year: 2021, discharge_month: 8,
     }, rule);
     assert.ok(Math.abs(pts - 8 / 6) < 1e-9, `expected 8/6, got ${pts}`);
   });
 
-  it('B1 user-quiz scenario: male, 24m service, Dec 2024 discharge → 2025 = full year = 2 pts', () => {
-    // Window: Jan 2025 – Dec 2027. Tax year 2025: full 12 months × (2/12) = 2.
+  it('[full-year]', () => {
     const pts = soldierPoints(2025, 'male', {
       service_months_full: 24, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
     }, rule);
     assert.equal(pts, 2);
   });
 
-  it('short service (15 months) yields 1 pt/year annualized', () => {
-    // 15 < 23 → short service → 1 pt/year → 12 × (1/12) = 1.
+  it('[short-15m]', () => {
     const pts = soldierPoints(2025, 'male', {
       service_months_full: 15, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
     }, rule);
     assert.equal(pts, 1);
   });
 
-  it('female 22m boundary qualifies for long-service rate', () => {
+  it('[idf-female-22m-boundary]', () => {
     const pts = soldierPoints(2025, 'female', {
       service_months_full: 22, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
     }, rule);
     assert.equal(pts, 2);
   });
 
-  it('female 21m falls to short-service rate', () => {
+  it('[idf-female-21m-short]', () => {
     const pts = soldierPoints(2025, 'female', {
       service_months_full: 21, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
     }, rule);
     assert.equal(pts, 1);
+  });
+
+  it('[medical-early-discharge]', () => {
+    const pts = soldierPoints(2025, 'male', {
+      service_months_full: 8, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
+      early_discharge_medical: true,
+    }, rule);
+    assert.equal(pts, 1);
+  });
+
+  it('[national-23m-short]', () => {
+    const pts = soldierPoints(2025, 'male', {
+      service_months_full: 23, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
+      service_track: 'national',
+    }, rule);
+    assert.equal(pts, 1);
+  });
+
+  it('[national-24m-long]', () => {
+    const pts = soldierPoints(2025, 'female', {
+      service_months_full: 24, service_months_partial: 0, discharge_year: 2024, discharge_month: 12,
+      service_track: 'national',
+    }, rule);
+    assert.equal(pts, 2);
   });
 });
 
@@ -149,24 +170,49 @@ describe('immigrantPoints', () => {
   });
 });
 
+describe('calculate — degree points (§40C/§40D, current pre-2023 simplification)', () => {
+  // Canonical spec: tax-rule/degree-40c-40d.md → ## Worked examples.
+  // Tests cover ONLY the shipped pre-2023 single-year flat-first_degree behavior.
+  // Target post-2023 reform behavior is documented in spec but not yet implemented.
+  const rules = makeFixtureYear();
+  const settlements = makeFixtureSettlements();
+
+  it('[degree-none] no degree on taxpayer → 0 degree credit points', () => {
+    const r = calculate(blankInput({ employments: [{ employer_id: 'A', taxable_income: 100_000, withheld_tax: 0, months_worked: 12, pension_employee_deposit: 0 }] }), rules, settlements);
+    assert.equal(r.trace.credit_points.degree, 0);
+  });
+
+  it('[degree-present-current-flat-first-degree] any degree set → flat rules.first_degree, ignoring kind/year', () => {
+    const r = calculate(
+      blankInput({
+        taxpayer: { gender: 'male', degree: { kind: 'second', completed_year: 2024 } },
+        employments: [{ employer_id: 'A', taxable_income: 100_000, withheld_tax: 0, months_worked: 12, pension_employee_deposit: 0 }],
+      }),
+      rules,
+      settlements,
+    );
+    assert.equal(r.trace.credit_points.degree, rules.degree_points.value.first_degree);
+  });
+});
+
 describe('settlementDiscount', () => {
   const rule = makeFixtureYear().settlement_rule.value;
   const settlements = makeFixtureSettlements();
-  it('zero for non-listed settlement', () => {
+  it('[settlement-not-listed] zero for non-listed settlement', () => {
     const r = settlementDiscount({ settlement_he: 'NotListed', qualifying_months: 12 }, settlements, rule, 150_000);
     assert.equal(r.discount_nis, 0);
   });
-  it('full year @ 10% on income up to ceiling', () => {
+  it('[settlement-full-year-cap-below-income] full year @ 10% on income up to ceiling', () => {
     // 150k < 250k ceiling → eligible 150k * 0.10 * 12/12 = 15k
     const r = settlementDiscount({ settlement_he: 'TestVillage', qualifying_months: 12 }, settlements, rule, 150_000);
     assert.equal(r.discount_nis, 15_000);
   });
-  it('income capped at ceiling', () => {
+  it('[settlement-income-above-ceiling] income capped at ceiling', () => {
     // 1M income, ceiling 250k → eligible base = 250k → 25k discount
     const r = settlementDiscount({ settlement_he: 'TestVillage', qualifying_months: 12 }, settlements, rule, 1_000_000);
     assert.equal(r.discount_nis, 25_000);
   });
-  it('pro-rates by qualifying months', () => {
+  it('[settlement-pro-rata-6-months] pro-rates by qualifying months', () => {
     // 150k, 6 months → 150k * 0.10 * 0.5 = 7500
     const r = settlementDiscount({ settlement_he: 'TestVillage', qualifying_months: 6 }, settlements, rule, 150_000);
     assert.equal(r.discount_nis, 7_500);
@@ -175,14 +221,18 @@ describe('settlementDiscount', () => {
 
 describe('donationCredit', () => {
   const rule = makeFixtureYear().donation.value;
-  it('zero below minimum eligible', () => {
+  it('[below-min] zero below minimum eligible', () => {
     assert.equal(donationCredit(150, 100_000, rule), 0);
   });
-  it('35% of donation, capped at 30% of taxable income', () => {
+  it('[at-min-boundary] credits full amount once the floor is exactly met', () => {
+    // 200 == fixture floor → not below → 200 * 0.35 = 70
+    assert.equal(donationCredit(200, 100_000, rule), 70);
+  });
+  it('[share-cap] 35% of donation, capped at 30% of taxable income', () => {
     // 50k donation, taxable 100k → share-cap = 30k → 30k * 0.35 = 10500
     assert.equal(donationCredit(50_000, 100_000, rule), 10_500);
   });
-  it('35% of donation when under cap', () => {
+  it('[under-cap] 35% of donation when under cap', () => {
     assert.equal(donationCredit(1_000, 100_000, rule), 350);
   });
 });
@@ -205,6 +255,113 @@ describe('separateRateTax', () => {
     // 0.25 + 0.15 + 0.25 + 0.30 + 0.25 + 0.30 = 1.50 of 1000 = 1500
     assert.equal(tax, 1_500);
   });
+
+  // §102 secondary (capital-gains track) — canonical spec tax-rule/secondary-102.md
+  it('§102 secondary capital-gains track taxes a 200k gain at 25% [secondary-25pct-capital-track]', () => {
+    const rates = makeFixtureYear().separate_rates.value;
+    const tax = separateRateTax(
+      {
+        interest_linked: 0,
+        interest_nonlinked: 0,
+        dividend_normal: 0,
+        dividend_substantial: 0,
+        capital_gains: 200_000,
+        capital_gains_substantial: 0,
+        separate_withheld_tax: 0,
+      },
+      rates,
+    );
+    assert.equal(tax, 50_000);
+  });
+
+  it('§102 secondary by a substantial shareholder (≥10%) taxes a 200k gain at 30% [secondary-30pct-substantial]', () => {
+    const rates = makeFixtureYear().separate_rates.value;
+    const tax = separateRateTax(
+      {
+        interest_linked: 0,
+        interest_nonlinked: 0,
+        dividend_normal: 0,
+        dividend_substantial: 0,
+        capital_gains: 0,
+        capital_gains_substantial: 200_000,
+        separate_withheld_tax: 0,
+      },
+      rates,
+    );
+    assert.equal(tax, 60_000);
+  });
+
+  // Capital-market interest/dividend buckets — canonical spec tax-rule/capital-gains-91-92.md
+  const oneBucket = (field: keyof YearInput['investment_income'], amount: number) => {
+    const income: YearInput['investment_income'] = {
+      interest_linked: 0,
+      interest_nonlinked: 0,
+      dividend_normal: 0,
+      dividend_substantial: 0,
+      capital_gains: 0,
+      capital_gains_substantial: 0,
+      separate_withheld_tax: 0,
+    };
+    income[field] = amount;
+    return separateRateTax(income, makeFixtureYear().separate_rates.value);
+  };
+
+  it('CPI-linked interest taxed at 25% [capmkt-interest-linked-25pct]', () =>
+    assert.equal(oneBucket('interest_linked', 10_000), 2_500));
+  it('nominal (non-linked) interest taxed at 15% [capmkt-interest-nonlinked-15pct]', () =>
+    assert.equal(oneBucket('interest_nonlinked', 10_000), 1_500));
+  it('ordinary dividend taxed at 25% [capmkt-dividend-normal-25pct]', () =>
+    assert.equal(oneBucket('dividend_normal', 10_000), 2_500));
+  it('substantial-shareholder dividend taxed at 30% [capmkt-dividend-substantial-30pct]', () =>
+    assert.equal(oneBucket('dividend_substantial', 10_000), 3_000));
+});
+
+describe('calculate — capital-markets §91/§92 over-withholding refund (tax-rule/capital-gains-91-92.md)', () => {
+  const rules = makeFixtureYear();
+  const settlements = makeFixtureSettlements();
+  // No salary; ₪40k ordinary dividend; bank withheld ₪12k (30%); correct rate 25% → ₪10k owed.
+  const input = blankInput({
+    investment_income: {
+      interest_linked: 0,
+      interest_nonlinked: 0,
+      dividend_normal: 40_000,
+      dividend_substantial: 0,
+      capital_gains: 0,
+      capital_gains_substantial: 0,
+      separate_withheld_tax: 12_000,
+    },
+  });
+  const r = calculate(input, rules, settlements);
+
+  it('separate_tax = 40k × 25% = 10k [capmkt-overwithheld-refund]', () =>
+    assert.equal(r.components.separate_tax, 10_000));
+  it('refund = 12000 withheld − 10000 owed = 2000', () =>
+    assert.equal(r.refund_or_owe_nis, 2_000));
+  it('recommendation = file', () => assert.equal(r.recommendation, 'file'));
+});
+
+describe('calculate — secondary §102 over-withholding refund (tax-rule/secondary-102.md)', () => {
+  const rules = makeFixtureYear();
+  const settlements = makeFixtureSettlements();
+  // No salary; ₪100k capital-track gain; trustee withheld ₪30k (30%); correct rate 25% → ₪25k owed.
+  const input = blankInput({
+    investment_income: {
+      interest_linked: 0,
+      interest_nonlinked: 0,
+      dividend_normal: 0,
+      dividend_substantial: 0,
+      capital_gains: 100_000,
+      capital_gains_substantial: 0,
+      separate_withheld_tax: 30_000,
+    },
+  });
+  const r = calculate(input, rules, settlements);
+
+  it('separate_tax = 100k × 25% = 25k [secondary-overwithheld-refund]', () =>
+    assert.equal(r.components.separate_tax, 25_000));
+  it('refund = 30000 withheld − 25000 owed = 5000', () =>
+    assert.equal(r.refund_or_owe_nis, 5_000));
+  it('recommendation = file', () => assert.equal(r.recommendation, 'file'));
 });
 
 describe('calculate — golden case (single employer, no extras)', () => {
@@ -275,7 +432,7 @@ describe('calculate — golden case (single employer, no extras)', () => {
   });
 });
 
-describe('calculate — golden case (multi-employer + settlement, Yam-like)', () => {
+describe('calculate — golden case (multi-employer + settlement, Yam-like) [multi-employer-aggregate]', () => {
   const rules = makeFixtureYear();
   const settlements = makeFixtureSettlements();
   const input = blankInput({
@@ -303,6 +460,32 @@ describe('calculate — golden case (multi-employer + settlement, Yam-like)', ()
   it('settlement discount = 10k', () => assert.equal(r.components.settlement_discount, 10_000));
   it('ordinary_tax clamped at 0', () => assert.equal(r.components.ordinary_tax, 0));
   it('refund = full withheld = 24k', () => assert.equal(r.refund_or_owe_nis, 24_000));
+  it('recommendation = file', () => assert.equal(r.recommendation, 'file'));
+});
+
+describe('calculate — partial-year single employer (no replacement income) [partial-year-single-employer]', () => {
+  // Canonical spec: tax-rule/multi-employer-121-164.md § Worked examples row `partial-year-single-employer`.
+  // Demonstrates: engine applies §121 brackets to actual annual income (NOT annualized),
+  // and applies full annual credit points (NOT pro-rated by months_worked).
+  const rules = makeFixtureYear();
+  const settlements = makeFixtureSettlements();
+  const input = blankInput({
+    employments: [
+      { employer_id: 'A', taxable_income: 50_000, withheld_tax: 8_000, months_worked: 6, pension_employee_deposit: 0 },
+    ],
+  });
+  const r = calculate(input, rules, settlements);
+
+  // taxable_ordinary = 50k
+  // gross_tax = 50k * 0.10 = 5_000
+  // points = 2.25 (base, male) → credit_amount = 2.25 * 3000 = 6_750
+  // ordinary_tax = max(0, 5000 - 6750) = 0  (annual credit > tax on actual annual income)
+  // refund = withheld(8000) - 0 = 8000
+  it('taxable_ordinary = 50k (actual, NOT annualized)', () => assert.equal(r.components.taxable_ordinary, 50_000));
+  it('credit_points_total = 2.25 (full annual entitlement, NOT pro-rated by months_worked=6)', () =>
+    assert.equal(r.components.credit_points_total, 2.25));
+  it('ordinary_tax clamped at 0', () => assert.equal(r.components.ordinary_tax, 0));
+  it('refund = full withheld = 8k', () => assert.equal(r.refund_or_owe_nis, 8_000));
   it('recommendation = file', () => assert.equal(r.recommendation, 'file'));
 });
 
@@ -357,7 +540,7 @@ describe('calculate — properties', () => {
 });
 
 describe('mandatoryFilingTriggers (B2 — multi-threshold from תקנות פטור)', () => {
-  it('aggregated multi-employer gross salary > gross_salary_nis fires the salary trigger', () => {
+  it('aggregated multi-employer gross salary > gross_salary_nis fires the salary trigger [multi-employer-mandatory-trigger]', () => {
     // Fixture gross_salary_nis = 700_000. Two employers @ 400k each = 800k total.
     const rules = makeFixtureYear();
     const input = blankInput({
@@ -491,5 +674,85 @@ describe('calculate — §45A vs §47 split (no double-counting)', () => {
     const r = calculate(input, rules, settlements);
     assert.equal(r.trace.taxable.pension_section_47_deduction, 0);
     assert.equal(r.components.pension_credit, 0);
+  });
+});
+
+describe('calculate — Bituach Leumi benefits (§2(2) taxable / §9 exempt) — canonical spec tax-rule/bituach-leumi-benefits-9.md', () => {
+  const rules = makeFixtureYear();
+  const settlements = makeFixtureSettlements();
+
+  it('[btl-taxable-flows-to-gross] taxable Bituach Leumi benefit added to grossOrdinary', () => {
+    const input = blankInput({
+      employments: [
+        { employer_id: 'A', taxable_income: 60_000, withheld_tax: 0, months_worked: 6, pension_employee_deposit: 0 },
+      ],
+      btl_benefits: [
+        { source: 'maternity (דמי לידה)', taxable_amount: 40_000, withheld_tax: 8_000 },
+      ],
+    });
+    const r = calculate(input, rules, settlements);
+    assert.equal(r.trace.taxable.gross, 100_000, 'salary 60k + taxable Bituach Leumi 40k = 100k gross');
+    assert.equal(r.trace.taxable.taxable, 100_000, 'no §47 deduction → taxable === gross');
+    assert.equal(r.trace.income.sources.length, 2, 'two income sources in trace (employer + Bituach Leumi)');
+  });
+
+  it('[btl-withheld-flows-to-refund] withheld tax on taxable Bituach Leumi benefit included in total_withheld', () => {
+    // Only Bituach Leumi income: 40k taxable, 8k withheld. Credit points (2.25 × 3000 = 6,750) zero out
+    // the tax on 40k (which is 4k @ 10%). Refund = 8k withheld − 0 liability = 8k.
+    const input = blankInput({
+      btl_benefits: [
+        { source: 'maternity (דמי לידה)', taxable_amount: 40_000, withheld_tax: 8_000 },
+      ],
+    });
+    const r = calculate(input, rules, settlements);
+    assert.equal(r.components.total_withheld, 8_000);
+    assert.equal(r.components.ordinary_tax, 0, 'credit points zero out the small bracket tax');
+    assert.equal(r.refund_or_owe_nis, 8_000);
+    assert.equal(r.recommendation, 'file');
+  });
+
+  it('[btl-mandatory-trigger-aggregates] taxable Bituach Leumi counted in all-source mandatory-filing trigger', () => {
+    // Fixture all_source_taxable_nis = 700_000. Salary 600k + Bituach Leumi 200k = 800k.
+    const input = blankInput({
+      employments: [
+        { employer_id: 'A', taxable_income: 600_000, withheld_tax: 0, months_worked: 12, pension_employee_deposit: 0 },
+      ],
+      btl_benefits: [
+        { source: 'maternity (דמי לידה)', taxable_amount: 200_000, withheld_tax: 0 },
+      ],
+    });
+    const triggers = mandatoryFilingTriggers(input, rules);
+    assert.ok(
+      triggers.some((t) => t.includes('all-source taxable')),
+      `expected all-source-taxable trigger; got ${JSON.stringify(triggers)}`,
+    );
+  });
+
+  it('[btl-exempt-not-passed-to-engine] exempt Bituach Leumi benefit (e.g. קצבת ילדים) is NOT placed in btl_benefits — engine matches baseline', () => {
+    // Classifier check: if intake correctly drops exempt benefits, the engine input has empty
+    // btl_benefits[] and the result equals the no-Bituach-Leumi baseline. Defensive — guards against
+    // a future regression where exempt benefits leak into the input.
+    const baseline = calculate(
+      blankInput({
+        employments: [
+          { employer_id: 'A', taxable_income: 100_000, withheld_tax: 8_000, months_worked: 12, pension_employee_deposit: 0 },
+        ],
+      }),
+      rules,
+      settlements,
+    );
+    const withCorrectlyExcludedExemptBenefit = calculate(
+      blankInput({
+        employments: [
+          { employer_id: 'A', taxable_income: 100_000, withheld_tax: 8_000, months_worked: 12, pension_employee_deposit: 0 },
+        ],
+        // קצבת ילדים, גמלת סיעוד, etc. — exempt, never reach the engine.
+        btl_benefits: [],
+      }),
+      rules,
+      settlements,
+    );
+    assert.equal(withCorrectlyExcludedExemptBenefit.refund_or_owe_nis, baseline.refund_or_owe_nis);
+    assert.equal(withCorrectlyExcludedExemptBenefit.components.total_withheld, baseline.components.total_withheld);
   });
 });

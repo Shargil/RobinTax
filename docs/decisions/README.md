@@ -13,6 +13,7 @@ Scan filenames first. Open an ADR only when its name suggests it's relevant.
 | [ADR-011](ADR-011-user-journey-ledger.md) | One per-user journey ledger as the cross-skill source of truth | accepted |
 | [ADR-012](ADR-012-apple-reminders-for-pending-docs.md) | Apple Reminders substrate for pending-doc reminders + cohort bundling | accepted |
 | [ADR-013](ADR-013-user-profile-and-intake.md) | User profile + intake as the first journey stage | accepted |
+| [ADR-014](ADR-014-intake-journey-reconciliation.md) | Intake↔journey reconciliation: no orphaned expectations | accepted |
 
 > ADR numbers are not reused. Gaps (002, 004–008) are historical — those ADRs were specific to the Chrome-extension architecture that was retired on 2026-05-22. New ADRs continue from the next unused number.
 

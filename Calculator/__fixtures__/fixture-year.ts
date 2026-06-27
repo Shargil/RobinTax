@@ -34,6 +34,7 @@ export function makeFixtureYear(overrides: Partial<YearRules> = {}): YearRules {
         points_per_year_short_service: 1,
         min_service_months_male_long: 23,
         min_service_months_female_long: 22,
+        min_service_months_national_long: 24,
         min_service_months_eligibility: 12,
         eligibility_window_months: 36,
       },
