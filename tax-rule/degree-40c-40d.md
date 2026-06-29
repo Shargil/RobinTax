@@ -162,6 +162,13 @@ Read by the `intake` skill walker when the user checks `degree` in [`Intake/chec
 
    Reason: pre-2023 vs post-2023 reform fork + filing-year window check + pre-2014 cutoff. Pure free-text would force the >90% of users who graduated in obvious post-2014 years to type a string when one click could express the same intent for the two edge cases. The "2014" parenthetical in option 1 is non-negotiable — a bare `All before 2014` looks like an arbitrary number; the parenthetical tells the user why that year matters and prevents the "why 2014?" question.
 
+- **`internship_deferral`** — **conditional**: fire ONLY if `degrees_held` includes `תואר שלישי / רפואה / רפואת שיניים / רוקחות` (the deferral-eligible medical cluster). `AskUserQuestion`, single-select. Question text: `ברפואה / רפואת שיניים / רוקחות עשית התמחות אחרי התואר? נקודות הזיכוי יכולות להידחות לשנה שאחרי סוף ההתמחות. אם עשית — באיזו שנה היא הסתיימה? (אפשר "Other" לכתוב שנה)`. Options (exact order):
+   1. `לא עשיתי התמחות` — no deferral; the window stays at completion+1/+2 (records `internship_deferral = none`).
+   2. `לא זוכר/ת מתי הסתיימה` — `unknown`; seed the doc and let the Calculator resolve from the internship certificate (`אישור על תקופת ההתמחות`).
+   - **Auto-`Other`** captures the internship-end year as free-text (e.g. `2019`).
+
+   Reason: §40C lets **medicine / dentistry / pharmacy / law** electively defer the credit window to **internship_end + 1** (intern stipends are low/untaxed, so deferral maximizes utilization — see `## Edge cases → Internship deferral`). This is the **only** path by which a "too-early" *completion* year can still land a credit inside the 2020–2025 filing window (e.g. degree 2015, internship ended 2019 → credit year 2020). Without this branch the year-based scoping would wrongly mark such users `n/a`. **Engine caveat:** the calc cannot yet *compute* the deferred credit (Conflict #6) — capturing this input lets the **seed** pull the diploma + internship cert for the right years and flag the user; the point math stays a TODO until §40C engine work lands.
+
 > **Study years are NOT asked at intake** — the diploma carries the program duration, and the Calculator reads it off the cert (or asks the user at calc-time if it can't). Avoids a brittle free-text question that the engine cannot yet consume (see Conflict #1).
 
 ### Seeds
@@ -173,7 +180,8 @@ Read by the `intake` skill walker when the user checks `degree` in [`Intake/chec
   - **Post-2023 MA graduates:** pessimistic window = completion+1 through completion+2. Seed if any year ∈ filing window.
   - **Post-2023 PhD-direct:** seed if completion+1 or +2 ∈ filing window.
   - **Professional / teaching:** pessimistic window = completion+1 through completion+3. Seed if any year ∈ filing window.
-  - Calculator narrows the window using actual `study_years` from the diploma.
+  - **Internship-deferral tracks (medicine / dentistry / pharmacy / law, per `internship_deferral`):** when the user did an internship, the window **starts at `internship_end + 1`** instead of `completion + 1` (pre-reform: just `{internship_end + 1}`; post-2023: `internship_end+1 .. +N`). Seed if that shifted window ∈ filing years. **This overrides the completion-year `n/a` check** — a degree whose *completion* window misses the filing years can still seed via the deferred window (e.g. completion 2015 → would be `n/a`, but internship ended 2019 → window {2020} → seed). If `internship_deferral = unknown` (didn't recall the year) → seed pessimistically and let the diploma + internship cert resolve at calc-time.
+  - Calculator narrows the window using actual `study_years` (and `internship_end`, once the engine supports it) from the diploma/cert.
 - **Mutual exclusion gate (§40C ↔ §40D)**: if user reports BOTH academic degree(s) AND professional cert, surface a wrap-up note: "You qualify for either §40C (degrees) OR §40D (professional cert) — not both. The calculator picks the larger; you can override."
 
 ### Profile key
@@ -229,6 +237,7 @@ The nominal value of 1 credit point lives in `point_value_annual` / `point_value
 - **Form 119 playbook not built** — `Collector/documents/form-119-degree.md` is unwritten. Manual fallback documented in intake seeds.
 - **2026 year values not yet captured** — ship `"2026":` block when filing 2026 begins.
 - **ITA Form 119 service page returned 403** — needs an authenticated fetch (gov.il blocks unauthenticated WebFetch). Re-verify on next pass.
+- **Law (LLB) internship deferral not captured** — `degrees_held` has no law option (law is a `תואר ראשון`/BA), so the `internship_deferral` follow-up — conditioned on the `תואר שלישי / רפואה / רפואת שיניים / רוקחות` cluster — won't fire for law grads doing a clerkship (התמחות בעריכת דין), even though §40C grants them the same deferral. Sub-gap; fix by either adding a law track to `degrees_held` or broadening the `internship_deferral` trigger to also fire on a first degree with a "was it law?" check.
 
 ## Verification log
 - **2026-06-13** — Initial canonicalization. Folded from `Intake/branches/degree.md`, `Calculator/rules/types.ts` `DegreePointsRule` shape, `Calculator/rules/2024.ts:102-113` + `2025.ts:97-103` (both with BUG comments already flagged 2026-06-10), and `Calculator/engine/calculate.ts:458` (`// simplified` comment). Gap-passed against three kolzchut pages (BA, MA, professional). Form 119 gov.il page returned 403 — re-fetch needed via authenticated client. **6 conflicts surfaced** below (see report); none silently patched. — Claude
@@ -241,4 +250,4 @@ See the run report's "🚨 CONFLICTS FOUND" section. In brief:
 3. `DegreePointsRule` type can't encode per-kind year caps or completion-year logic.
 4. `Calculator/engine/calculate.ts:36` `taxpayer.degree.kind` has no `'professional'` variant — §40D unrepresentable.
 5. Engine has no mutual-exclusion logic for §40C ↔ §40D.
-6. No internship-deferral input or logic.
+6. No internship-deferral **engine** logic. **Partly addressed 2026-06-29:** intake now *captures* the input (the `internship_deferral` follow-up) and the Seeds scoping shifts the window to `internship_end+1` so the diploma/cert gets pulled for the right filing years + the user is flagged. The **engine** still cannot compute the deferred points — that remains the open part of this conflict.
