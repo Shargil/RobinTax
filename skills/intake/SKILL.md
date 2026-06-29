@@ -22,7 +22,7 @@ Three states to discriminate. Decide which branch in this order:
 2. **`<memory>/intake.draft.md` exists** → there's a paused intake. Check the draft's `Started:` timestamp:
    - If `now - Started > 7 days` → silently `rm` the draft file (it's stale; user has likely moved on or their tax situation changed). Continue to fresh-run branch.
    - Otherwise → branch to **§1b RESUME**. Done.
-3. **Neither exists** → fresh first run. Continue to §2 WELCOME.
+3. **Neither exists** → fresh first run. Continue to §3 PREAMBLE (the first-run welcome already ran in `robintax` §0.5 before this hand-off; intake does not re-render it).
 
 **Do not load checklist or matrix yet.** Those reads are deferred to §3 PREAMBLE / §9 SEED so the user sees the welcome panel without an extra ~15s of file-load round-trips on cold start.
 
@@ -43,29 +43,16 @@ Panel options:
 1. `המשך מאיפה שעצרתי` (default)
 2. `התחל מחדש`
 
-- Option 1 → jump to the first non-`done` section recorded in the draft, restoring `selected`, `filing.*`, and `branches` from the draft as you go. Skip §2 WELCOME, §3 PREAMBLE, and any already-`done` section. For §4 partial state, resume at `next_panel_index`. For §7, rebuild the queue from `selected` + tax-rule specs and skip any key already in `branches`.
-- Option 2 → `rm` the draft file, then fall through to §2 WELCOME as a fresh run.
+- Option 1 → jump to the first non-`done` section recorded in the draft, restoring `selected`, `filing.*`, and `branches` from the draft as you go. Skip §3 PREAMBLE and any already-`done` section. For §4 partial state, resume at `next_panel_index`. For §7, rebuild the queue from `selected` + tax-rule specs and skip any key already in `branches`.
+- Option 2 → `rm` the draft file, then fall through to §3 PREAMBLE as a fresh run.
 
 After §1b, the rest of the workflow continues normally — every section still writes/updates the draft at its boundaries per §8b.
 
-### 2. WELCOME (first use only)
+### 2. WELCOME — moved to robintax
 
-If `<memory>/profile.md` did NOT exist at §1 READ AND no draft was found (i.e. this is the user's first run, not a resume), print exactly once, before anything else:
+The first-run welcome (the "Welcome to RobinTax / The process" box + the start/decline gate) now lives in **`robintax` §0.5 FIRST-RUN WELCOME**, which runs *before* it hands off to intake. Intake no longer prints a welcome and no longer asks "Continue? y/n" — robintax's consent panel is the start-gate. A fresh run goes straight from §1 READ to §3 PREAMBLE.
 
-```
-Welcome to RobinTax,
-Let's get your money back!
-
-The process:
-  1. Intake questions
-  2. We'll browse Chrome *together* to get documents
-  3. Calculate what you deserve
-  4. Fill up the form!
-```
-
-Then ask via `AskUserQuestion`: a single yes/no panel ("Continue?" → `Yes, start the intake questions` / `Not now`). On `Not now` → exit cleanly with one short line ("No problem — run /robintax when you're ready."). On `Yes` → fall through to §3 PREAMBLE.
-
-Skip this entire step on re-intake (profile already exists) — it routes through §10 RE-INTAKE.
+(If `/intake` is invoked **directly** by a returning user, §1 READ routes to §10 RE-INTAKE, which has its own intro. There is no path where intake needs to render the first-run welcome itself.)
 
 ### 3. PREAMBLE
 
@@ -79,19 +66,20 @@ the proof document anyway and let it speak for itself.
 
 Now load [`Intake/checklist.md`](../../Intake/checklist.md) — parse every line under `## Items` into `{slug, label, tax_rule_slug, flags}`. Preserve listed order across groups; groups are editorial only. (Deferred from §1 READ so the welcome panel renders without an extra round-trip.)
 
-Then proceed straight to §4. **Do not ask "ready? y/n"** — the §2 Continue panel + this preamble are the gate (per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) gate-once rule and [[feedback_approval_frequency]]).
+Then proceed straight to §4. **Do not ask "ready? y/n"** — robintax's §0.5 consent panel + this preamble are the gate (per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) gate-once rule and [[feedback_approval_frequency]]).
 
 ### 4. CHECKLIST
 
 Render the checklist items as a continuous run of multi-select `AskUserQuestion` panels:
 
-1. **Each panel** is `multiSelect: true` with exactly 4 options (the last panel may have 1–4). Compute `N = ceil(item_count / 4)` once up-front — that's the total number of *panels* the user will see (e.g. 24 items → `N = 6`).
-2. **Batch panels into `AskUserQuestion` calls of up to 4 panels per call.** The tool accepts 1–4 questions per call; pack them. So 6 panels collapse to 2 calls (4-then-2 or 3-then-3), not 6 calls. Same number of screens for the user, ~3× fewer model turns = ~3× less inter-panel latency. **Do not** make any other tool calls (no Read, no Bash, no thinking output) between consecutive `AskUserQuestion` calls.
-3. **Panel question text** is always: `{i}/{N} Select everything that applies`, where `i` is the 1-indexed panel number (continues across calls — panel 5 in call 2 is still `5/6`). **Subtitle / description** (carried in the question body or first option description): `If you're not sure, select it and we'll check together`.
+1. **Each panel** is `multiSelect: true` with **up to 3 real checklist items + a 4th "none" chip** (the explicit `לא, אף אחד מאלה` option, always last) — at most 4 options total, the `AskUserQuestion` cap. Compute `N = ceil(item_count / 3)` once up-front (the none chip is *not* a checklist item — don't count it toward `item_count`; e.g. 24 items → `N = 8`). Tradeoff vs. the old 4-real-items layout: ~33% more panels, but it makes "none applies" unambiguous (see §4.5/§4.8).
+2. **Batch panels into `AskUserQuestion` calls of up to 4 panels per call.** The tool accepts 1–4 questions per call; pack them. So 8 panels collapse to 2 calls (4-then-4), not 8 calls. Same number of screens for the user, fewer model turns = less inter-panel latency. **Do not** make any other tool calls (no Read, no Bash, no thinking output) between consecutive `AskUserQuestion` calls.
+3. **Panel question text** is always: `{i}/{N} Select everything that applies`, where `i` is the 1-indexed panel number (continues across calls — panel 5 in call 2 is still `5/8`). **Subtitle / description** (carried in the question body or first option description): `If you're not sure, select it and we'll check together`.
 4. **Option label**: the Hebrew label from `Intake/checklist.md` for that slug. Do **not** show the slug or the `tax-rule:` mapping — those are walker internals.
-5. **`i/N` is the only progress signal.** No section headers, no Hebrew labels above the panel.
-6. Maintain `selected = []`. After each panel (within a call or across calls), append every checked option's slug.
-7. **Empty submission = "none of these apply" — move on.** If a panel returns with zero checked options, that is a valid answer (the user genuinely had nothing to check). Append nothing to `selected` and **fire the next panel immediately** (next question in the same call, or next call if this was the last question in the batch). Do NOT re-fire the same panel. Do NOT pause to ask "are you sure nothing applies?" or "did you mean to skip?". Do NOT summarize progress mid-run. The user understands the checklist; a blank panel means blank panel. Only break out of the loop if the user explicitly types something (not via the panel) telling you to stop.
+5. **The "none" chip.** Every panel's last option is `לא, אף אחד מאלה` — Hebrew-only label, **empty `description`** (per [[feedback_intake_hebrew_only]]). It exists so "nothing here applies" is a *positive, explicit* selection the harness reports cleanly: `AskUserQuestion` cannot otherwise distinguish a deliberate blank submit from a dismissed panel — the root cause of the re-fire bug (issue #3). It's mutually exclusive in spirit: if the user checks it **and** a real item, the real item wins (ignore the none chip).
+6. **`i/N` is the only progress signal.** No section headers, no Hebrew labels above the panel.
+7. Maintain `selected = []`. After each panel (within a call or across calls), append every checked **real** item's slug — never the none chip.
+8. **"None" or empty → advance, NEVER re-fire.** If a panel returns with only the none chip checked, or with nothing checked at all, that's a valid "none of these apply": append nothing and **fire the next panel immediately** (next question in the same call, or the next call). Do NOT re-fire the same panel. Do NOT pause to ask "are you sure nothing applies?" or "did you mean to skip?". Do NOT summarize progress mid-run. The none chip is the user's clean way to say "none"; a truly-empty submit is treated identically. Only break out of the loop if the user explicitly types something (not via the panel) telling you to stop.
 
 Continue until the checklist is exhausted. Do not write anything to disk yet.
 
@@ -289,8 +277,8 @@ The earlier rule was "do not auto-route, let the user choose." We flipped that o
 ## Anti-patterns
 
 - Asking the same question via free text after the user already answered via `AskUserQuestion`.
-- Re-firing a checklist panel because the user submitted it with nothing checked. Empty = "none of these apply" — fire the next panel. See §4.6.
-- Pausing mid-checklist to summarize progress, list what's been selected so far, or ask "should I continue?". The user already committed at §2 WELCOME and §3 PREAMBLE — keep firing panels until the checklist is exhausted.
+- Re-firing a checklist panel because the user submitted it with the "none" chip (or nothing) checked. That's a valid "none of these apply" — fire the next panel. See §4.5 (the chip) + §4.8 (advance, never re-fire).
+- Pausing mid-checklist to summarize progress, list what's been selected so far, or ask "should I continue?". The user already committed at robintax's §0.5 consent panel and §3 PREAMBLE — keep firing panels until the checklist is exhausted.
 - Inventing follow-ups for slugs whose `tax-rule:` is `none`. If there's no spec, there are no follow-ups — record the gate and move on.
 - Writing `<memory>/profile.md` mid-intake (incomplete state). Write once at §8, or partial-write at §5 on disqualifier short-circuit. **The draft file `<memory>/intake.draft.md` is the opposite — it IS expected to be written incrementally** (per §8b), and is the only persistence mechanism that survives a mid-intake kill.
 - Forgetting to delete `<memory>/intake.draft.md` after §8 succeeds. Leaving it around means the next `/robintax` run thinks intake is paused even though the profile is final.

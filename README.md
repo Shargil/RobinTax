@@ -38,15 +38,14 @@ Same namespaced skills, but you edit the source in-place.
 
 ## First run
 
-Type `/robintax:robintax`. It will:
+Type `/robintax:robintax`. On a fresh install it will:
 
-1. Create `~/Downloads/RobinTax/` (where every collected doc lands).
-2. Detect your platform and surface what features are available (macOS = full; Windows/Linux = degraded reminders).
-3. Read your journey ledger at `~/.claude/projects/<scope>/memory/journey.md` (created if missing).
-4. Report what you have / what's missing.
-5. Propose the next document and, on your go-ahead, route to `/robintax:get-doc <slug>`.
+1. **Welcome you** and show the 4-step process, then ask **one** consent (it keeps notes in its own memory and saves your documents to `~/Downloads/RobinTax/` — nothing leaves your machine). You can decline and bail.
+2. **Walk you through intake** — a checklist of eligibility questions so it knows which documents and which calculator branches apply.
+3. **Report** what you have / what's missing, and propose the next document.
+4. On your go-ahead, route to `/robintax:get-doc <slug>` to collect it.
 
-The first `/robintax:get-doc` run also bootstraps the [Playwriter](https://github.com/remorses/playwriter) Chrome extension so the skill can attach to your existing Chrome via CDP. You'll see a yellow "Chrome is being controlled by automated software" banner — that's the extension, not a phishing attempt.
+The dependency install for the bundled Smart Replay server happens automatically on session start (no manual `npm install`). The first `/robintax:get-doc` runs a one-time setup that grants the collection permissions for you (no manual `/permissions`), starts the [Playwriter](https://github.com/remorses/playwriter) relay, and walks you through installing the Playwriter Chrome extension so the skill can attach to your existing Chrome via CDP. A setup "doctor" prints the real state of each piece and the exact next step for anything missing. You'll see a yellow "Chrome is being controlled by automated software" banner — that's the extension, not a phishing attempt.
 
 You log in to gov.il / ITA / BTL / your bank yourself; the skill polls for the dashboard signal and resumes. Per [ADR-001](docs/decisions/ADR-001-no-credential-proxy.md), the skill never types passwords or one-time codes.
 

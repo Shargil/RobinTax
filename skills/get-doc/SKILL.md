@@ -23,23 +23,27 @@ The very first `/get-doc` run in a fresh install needs the Playwriter Chrome ext
     > 2. **Save to `~/Downloads/RobinTax/`.** A new folder under Downloads where I'll read and write your documents.
     > 3. **Bring Chrome to the front** so you can watch everything I do, side-by-side with this window.
     > 4. **Set Apple Reminders** so when a document takes days to arrive, you get a ping when it's ready.
+    > 5. **One-time setup (first run only):** grant the permissions for the above so I don't ask again, and connect to your Chrome via the Playwriter browser bridge (you'll install one Chrome extension — I'll walk you through it).
     >
     > Allow all? [Y/n]
 
     On `n` → exit cleanly. On `Y` → proceed to the checks below. This is the broad consent; genuinely irreversible *external* effects (sending an email, submitting a gov form) are still gated per-action when they happen — see [Gating model].
 
-0. **Permission check (one-time per machine).** Read `~/.claude/settings.json`'s `permissions.allow` array. If it does NOT contain `Bash(npx playwriter@latest *)` (or a broader pattern like `Bash(npx *)`), STOP and tell the user verbatim:
+0. **Grant collection permissions (auto — replaces the old manual `/permissions` step).** On the §00 `Y`, seed the sensitive collection perms into the user allowlist by running the bundled script:
 
-   > One-time setup: Claude Code needs permission to run `npx playwriter@latest *` (this drives your own Chrome to fetch your tax docs — never sees passwords). Run `/permissions` and add `Bash(npx playwriter@latest *)` to the allow list, then re-run `/get-doc`. Without this, every multi-line playwriter call will re-prompt mid-flow.
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT:-.}/hooks/seed-collect-perms.mjs"
+   ```
 
-   The plugin spec doesn't let us ship this permission, so it's a one-time manual step. This gate only matters for the LLM-fallback path — the Smart Replay happy path goes through the bundled `smart-replay` MCP server, which doesn't need it. We gate up-front anyway because the user might fall through to LLM and we want failures fast and cheap, not mid-flow.
+   It merges (never clobbers) `Bash(npx playwriter@latest *)`, the `replay` MCP tool (both plugin-namespaced and dev variants), and `Write(~/Downloads/RobinTax/**)` into `~/.claude/settings.json`. **No more "go run `/permissions` yourself."** This single `node` call may itself prompt once — that's fine, it's immediately after the user's explicit §00 consent. (Open item: whether the seeded perms take effect this session or the next; if next, the first `npx playwriter` falls back to one native "allow always".)
 
-1. Check Playwriter is reachable: `npx playwriter@latest session new` should return a session id. If the CLI is missing, npm fetches it. If the Chrome extension is not installed yet, the command prints install instructions — relay them verbatim and stop. Expected flow:
-   - Install the extension once from Chrome Web Store (link printed by playwriter).
-   - Allow it to attach to your current Chrome session.
-   - You'll see a yellow "Chrome is being controlled by automated software" banner — that's the extension, not an attack.
+1. **Setup doctor — show real state, never guess.** Run `"${CLAUDE_PLUGIN_ROOT:-.}/skills/get-doc/scripts/doctor.sh"` and relay its output. It prints each component's actual status + the exact next action for any ✗:
+   - **Node** present? **Chrome** present?
+   - **Relay** — the `smart-replay` MCP server auto-spawns the relay, but only *lazily on the first `replay` call*, and the Chrome extension needs it **already up** to connect. So the doctor **starts the relay now** (idempotent: probes port 19988, backgrounds `npx playwriter@latest serve --host 127.0.0.1` if down) *before* asking about the extension.
+   - **Extension** installed + connected? If not, the doctor prints the one-time steps — install link, then **quit Chrome fully (Cmd-Q) and reopen** (Chrome registers the extension only after a full restart), then click the icon. The yellow "controlled by automated software" banner is expected.
+   Never make the user interpret a green/red dot — the doctor states the next action in words.
 2. Ensure `~/Downloads/RobinTax/` exists: `mkdir -p ~/Downloads/RobinTax`. Idempotent. <!-- CONSENT §00: file I/O location — if this path changes, update §00 bullet 2. -->
-3. On subsequent runs (session already paired, folder exists), this preflight is silent.
+3. On subsequent runs (perms granted, extension paired, folder exists), the doctor comes back all-✓ and this whole preflight is silent.
 
 Per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md): the user owns all logins. The skill never types passwords. If a site needs login, you log in in your own Chrome; the skill polls for the dashboard signal and resumes.
 
@@ -95,6 +99,8 @@ First read `<memory>/journey.md` so you know this doc's current status and histo
 - Which steps are scary per [ADR-010](../../docs/decisions/ADR-010-explain-and-gate-scary-actions.md) (downloads, submits, sending emails, bank/email nav) and need y/n consent
 
 ### 3. EXECUTE
+
+**Precondition — preflight before replay (issue #4).** **Never invoke `mcp__smart-replay__replay` (or start any playwriter session) until the First-run preflight has completed for this install** — the §00 consent gate, §0 permission seed, and §1 setup doctor. If you cannot confirm the preflight ran this install (e.g. you jumped straight here from a slash command), run it first. Skipping it is exactly the bug where `replay` fired before the extension/relay were verified.
 
 **Three-way decision tree.** Pick exactly one based on PLAN:
 
