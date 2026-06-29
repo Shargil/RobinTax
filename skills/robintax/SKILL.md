@@ -152,11 +152,11 @@ Exact shape for the first-collect gate:
 
 ```
 We're missing:
-  1. <Full doc name (Hebrew name)> — <years or "once">
+  1. <Full doc name (Hebrew name)> — <years>
   2. ...
 
 Next: <Full doc name (Hebrew name)>
-   <one-line "why this one first" reason>
+   <one short clause — why this one first; e.g. "One login grabs all six years.">
 
   ┌─ How collection works ───────────────────────────────┐
   │  • I open YOUR Chrome — your profile, your sessions  │
@@ -173,6 +173,11 @@ Box rules:
 - The box body is exactly those 4 bullets in that order. Don't paraphrase; the wording is load-bearing (per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md) — credentials never proxy through us, and the user has to know that before they type a password into a browser we just opened).
 - The gate question follows the §4 "Gate text rule" above: `Open <Hebrew site name> in Chrome? [Y/n]` — e.g. `Open אתר רשות המיסים in Chrome? [Y/n]` for Form 106. The site name MUST match the next doc's actual portal in Hebrew; never use the generic `Continue?` or `Open Chrome and start?`.
 - Show the box exactly once per "first collect ever" — if the user accepts and the ledger now has `have` rows, subsequent gates use the bare §2 REPORT shape.
+
+Brevity rules (keep the gate scannable):
+- **Missing-list lines are `name (Hebrew) — <years>` and nothing more.** No per-item asides like "one per employer each year" or "once" — the year range (or bare name for a one-time doc) is enough.
+- **The "why this one first" line is ONE short clause**, not a paragraph. Drop it entirely if it isn't adding anything beyond the doc name.
+- **Do NOT surface manual-step / orphan notes here.** Docs with no automated fetch (e.g. §40D / `form-119`) are listed only in §5 WRAP-UP under `Manual steps:` — never injected into the REPORT or the collect GATE. The browser gate is about the doc we're about to fetch, not a place to enumerate things we'll handle later.
 
 ### 5. WRAP-UP (end of session)
 
@@ -209,6 +214,10 @@ Years ready to push to /calc-refund NOW (partial wins):
 Years still blocked:
   ⏸ 2023 — waiting on <Full name (Hebrew name)>
   ⏸ 2025 — waiting on <Full name>, <Full name>
+
+Manual steps (no automated fetch yet):
+  • <Full name (Hebrew name)> — <one line: where/how to get it manually>
+    e.g. Professional-certificate credit (§40D, טופס 119) — download Form 119 from gov.il, drop in ~/Downloads/RobinTax/.
 
 What to do next:
   • Push the ready years through /calc-refund now — don't sit on a refund you can already claim.
