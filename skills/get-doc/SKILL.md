@@ -42,8 +42,8 @@ The very first `/get-doc` run in a fresh install needs the Playwriter Chrome ext
    - **Relay** — the `smart-replay` MCP server auto-spawns the relay, but only *lazily on the first `replay` call*, and the Chrome extension needs it **already up** to connect. So the doctor **starts the relay now** (idempotent: probes port 19988, backgrounds `npx playwriter@latest serve --host 127.0.0.1` if down) *before* asking about the extension.
    - **Extension** installed + connected? If not, the doctor prints the one-time steps — install link, then **quit Chrome fully (Cmd-Q) and reopen** (Chrome registers the extension only after a full restart), then click the icon. The yellow "controlled by automated software" banner is expected.
    Never make the user interpret a green/red dot — the doctor states the next action in words.
-2. Ensure `~/Downloads/RobinTax/` exists: `mkdir -p ~/Downloads/RobinTax`. Idempotent. <!-- CONSENT §00: file I/O location — if this path changes, update §00 bullet 2. -->
-3. On subsequent runs (perms granted, extension paired, folder exists), the doctor comes back all-✓ and this whole preflight is silent.
+2. **Folder + platform (no prompt).** The `~/Downloads/RobinTax/` folder is created by the SessionStart hook — assume it exists; don't `mkdir` it (that would prompt). <!-- CONSENT §00: file I/O location — if this path changes, update §00 bullet 2. --> Also pick up the deferred platform detection: if `<memory>/platform.md` is missing, detect with `uname` and write it (the seeded `Bash(uname*)` grant covers this) — this is where the capability matrix first actually matters (reminders/split-screen).
+3. On subsequent runs (perms granted, extension paired, folder + platform recorded), the doctor comes back all-✓ and this whole preflight is silent.
 
 Per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md): the user owns all logins. The skill never types passwords. If a site needs login, you log in in your own Chrome; the skill polls for the dashboard signal and resumes.
 

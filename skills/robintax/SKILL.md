@@ -28,7 +28,7 @@ The only work allowed before the user sees anything is detecting whether this is
 2. **profile.md missing, draft exists** → **paused intake.** Print exactly one line (`Found a paused intake from <human time> ago — picking up where you left off.`) and invoke `Skill(intake)` (its §1b RESUME takes over). The user already consented on the run that created the draft, so skip the consent panel. Not a "first run."
 3. **profile.md missing, no draft** → **genuine first run** → §0.5 FIRST-RUN WELCOME.
 
-**Do not `mkdir`, detect platform, or write anything yet** — all of that is deferred to §0.5, *after* consent. If the **ledger** is missing but the profile exists, that's unexpected — flag it and recover by routing to `/intake` re-walk.
+**Do not `mkdir`, detect platform, or run any Bash here** — the `~/Downloads/RobinTax` folder is created by the SessionStart hook, and platform detection is deferred to collect-time (see §0.5.3). The only thing that happens before the welcome is the `Read` above. If the **ledger** is missing but the profile exists, that's unexpected — flag it and recover by routing to `/intake` re-walk.
 
 ### 0.5 FIRST-RUN WELCOME (new users only)
 
@@ -54,12 +54,11 @@ The user's very first screen. **robintax — not intake — owns this surface no
    - On **Not now** → exit cleanly with one line (`No problem — run /robintax when you're ready.`). Do **not** start intake.
    - On **Yes** → continue ↓
 
-3. **Deferred setup (now that the user said yes) — run as ONE silent batched turn, no narration.** Do `mkdir -p ~/Downloads/RobinTax` and `uname` together (and write `platform.md` from the result), in a single turn — not three announced steps. These were the old silent §0 actions:
-   - `mkdir -p ~/Downloads/RobinTax` — idempotent. The collection folder; everything `get-doc` saves lands here.
-   - Detect platform with `uname` and record once at `<memory>/platform.md` (skip if it already exists). Use `uname` (not `node -e`) so the seeded `Bash(uname*)` grant covers it.
-   - **Internal capability matrix** (routing only — never surface): macOS → Apple Reminders back the cohort/auto-recheck lifecycle + `split-screen.sh` arranges editor/browser; Windows/Linux → degraded (no OS reminders, no window split — see the Windows backend TODO at the bottom). Never print a "you're on macOS…" preamble.
+3. **On Yes → no setup commands here. Run NOTHING that prompts.** Do **not** `mkdir` and do **not** detect platform on the first run — both would fire a raw permission prompt right after the consent panel (a freshly-seeded grant isn't active until the next session, and a literal `~` wouldn't match an absolute-path grant). Instead:
+   - The `~/Downloads/RobinTax` folder is already created by the **SessionStart hook** (`hooks/install-deps.sh`), which runs without prompts. Assume it exists; never `mkdir` it from here.
+   - **Platform detection is deferred to collect-time** (`get-doc` preflight writes `<memory>/platform.md` if missing, inside its own consented flow where `Bash(uname*)` is active). The internal capability matrix (macOS → Apple Reminders + `split-screen.sh`; Windows/Linux → degraded) is only consulted at collect/reminder time, so there's nothing to detect during the first-run welcome. Never print a "you're on macOS…" preamble.
 
-4. **`Skill(intake)`** — intake now opens straight at its first question (its welcome moved here).
+4. **`Skill(intake)`** — go straight here, silently. Intake opens at its first question (its welcome moved to this §0.5). No prompting Bash ran after the consent panel.
 
 ### 1b. AUTO-RECHECK PENDING DOCS
 

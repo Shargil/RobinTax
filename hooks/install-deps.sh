@@ -15,7 +15,14 @@ DATA="${CLAUDE_PLUGIN_DATA:-$ROOT/.plugin-data}"
 SKILL_PKG="$ROOT/Collector/skill/package.json"
 SKILL_NM="$ROOT/Collector/skill/node_modules"
 
-# Nothing to do if the manifest isn't where we expect (e.g. layout changed).
+# Create the collection folder here, in the hook — NOT from a skill. Hooks run without
+# per-call permission prompts, so the user never sees a "can I make this folder?" prompt
+# right after the consent panel. (A skill's `mkdir ~/Downloads/RobinTax` would prompt,
+# because a freshly-seeded allowlist entry doesn't take effect until the next session,
+# and the literal `~` wouldn't match an absolute-path grant anyway.)
+mkdir -p "$HOME/Downloads/RobinTax" 2>/dev/null || true
+
+# Nothing more to do if the manifest isn't where we expect (e.g. layout changed).
 [ -f "$SKILL_PKG" ] || exit 0
 
 mkdir -p "$DATA"

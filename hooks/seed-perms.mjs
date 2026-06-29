@@ -18,10 +18,13 @@ const home = homedir();
 const settingsPath = join(home, ".claude", "settings.json");
 
 // Narrow, RobinTax-scoped grants only.
+// NOTE: no mkdir grant — the ~/Downloads/RobinTax folder is created by install-deps.sh
+// (the hook), which runs without permission prompts. A skill-issued `mkdir ~/Downloads/...`
+// would prompt anyway (freshly-seeded grants aren't active until the next session, and a
+// literal `~` wouldn't match an absolute-path grant).
 const WANT = [
   `Write(${home}/.claude/projects/**/memory/**)`,   // profile.md, journey.md, platform.md, intake.draft.md
-  `Bash(mkdir -p ${home}/Downloads/RobinTax*)`,       // the collection folder (first-run §0)
-  `Bash(uname*)`,                                     // platform detect (harmless)
+  `Bash(uname*)`,                                     // platform detect (deferred to collect-time; harmless)
 ];
 
 let settings = {};
