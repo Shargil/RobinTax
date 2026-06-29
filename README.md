@@ -7,34 +7,20 @@ Get your Israeli tax refund. The skill drives your own Chrome to collect tax-ref
 
 ## Install
 
-Prerequisite: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and authenticated. Chrome with your gov.il / ITA / BTL / employer logins already in your daily browser profile.
+Prerequisite: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and authenticated, and Chrome with your gov.il / employer / bank logins in your daily browser profile.
 
-### Option A — Install as a Claude Code plugin (recommended)
-
-In Claude Code:
+This is the whole installation. Start `claude`, then run these in order:
 
 ```
+claude
 /plugin marketplace add Shargil/RobinTax
 /plugin install robintax@robintax
-```
-
-Then anywhere:
-
-```
+/reload-plugins
 /robintax:robintax
 ```
 
-Skills surface namespaced: `/robintax:robintax`, `/robintax:get-doc`, `/robintax:calc-refund`.
-
-### Option B — Dev mode (work on the skills themselves)
-
-```
-git clone https://github.com/Shargil/RobinTax.git
-cd RobinTax
-claude --plugin-dir .
-```
-
-Same namespaced skills, but you edit the source in-place.
+- `/reload-plugins` activates the just-installed plugin (its skills + the bundled `smart-replay` MCP server) in the current session — without it they only load on the next `claude` start.
+- `/robintax:robintax` is the front door; it welcomes you, asks one consent, and walks you through intake. Skills surface namespaced: `/robintax:robintax`, `/robintax:get-doc`, `/robintax:calc-refund`.
 
 ## First run
 
