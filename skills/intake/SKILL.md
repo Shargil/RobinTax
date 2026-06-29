@@ -142,12 +142,12 @@ Firing rule: batch follow-ups into `AskUserQuestion` calls of up to 4 questions 
 
 Free-text items: render as an **`AskUserQuestion` panel** at the very end of the follow-up batch (not a plain message — plain messages force the user to type "no" just to dismiss). Question text is the Hebrew label from `Intake/checklist.md` for that slug. **Single-select**, with exactly **one** explicit option:
 
-1. `לא, אין משהו נוסף` — Hebrew-only label, no description.
+1. `לא שאני זוכר כרגע` — Hebrew-only label, no description. (A soft "nothing I recall right now" is psychologically easier to click than a definitive "no, there's nothing" — lower commitment, same effect.)
 
 The harness automatically appends an `Other` choice that opens a free-text input — that's the "type something" path. Do **not** add a second explicit `כן, יש לי מה לציין` option; it would render alongside the auto-`Other` and the user would see three muddled choices for what is really a two-way ask.
 
 Branching:
-- User picks `לא, אין משהו נוסף` → omit the slug from the profile entirely (do not write `no`).
+- User picks `לא שאני זוכר כרגע` → omit the slug from the profile entirely (do not write `no`).
 - User picks `Other` and types text → record `profile.branches[slug] = '<user text>'`.
 
 Most users pick `לא`, so this collapses to a single click instead of a free-text prompt the user has to actively dismiss.
