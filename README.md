@@ -9,8 +9,6 @@ Get your Israeli tax refund. The skill drives your own Chrome to collect tax-ref
 
 Prerequisite: [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and authenticated, and Chrome with your gov.il / employer / bank logins in your daily browser profile.
 
-This is the whole installation. Start `claude`, then run these in order:
-
 ```
 claude
 /plugin marketplace add Shargil/RobinTax
@@ -18,22 +16,6 @@ claude
 /reload-plugins
 /robintax:robintax
 ```
-
-- `/reload-plugins` activates the just-installed plugin (its skills + the bundled `smart-replay` MCP server) in the current session — without it they only load on the next `claude` start.
-- `/robintax:robintax` is the front door; it welcomes you, asks one consent, and walks you through intake. Skills surface namespaced: `/robintax:robintax`, `/robintax:get-doc`, `/robintax:calc-refund`.
-
-## First run
-
-Type `/robintax:robintax`. On a fresh install it will:
-
-1. **Welcome you** and show the 4-step process, then ask **one** consent (it keeps notes in its own memory and saves your documents to `~/Downloads/RobinTax/` — nothing leaves your machine). You can decline and bail.
-2. **Walk you through intake** — a checklist of eligibility questions so it knows which documents and which calculator branches apply.
-3. **Report** what you have / what's missing, and propose the next document.
-4. On your go-ahead, route to `/robintax:get-doc <slug>` to collect it.
-
-The dependency install for the bundled Smart Replay server happens automatically on session start (no manual `npm install`). The first `/robintax:get-doc` runs a one-time setup that grants the collection permissions for you (no manual `/permissions`), starts the [Playwriter](https://github.com/remorses/playwriter) relay, and walks you through installing the Playwriter Chrome extension so the skill can attach to your existing Chrome via CDP. A setup "doctor" prints the real state of each piece and the exact next step for anything missing. You'll see a yellow "Chrome is being controlled by automated software" banner — that's the extension, not a phishing attempt.
-
-You log in to gov.il / ITA / BTL / your bank yourself; the skill polls for the dashboard signal and resumes. Per [ADR-001](docs/decisions/ADR-001-no-credential-proxy.md), the skill never types passwords or one-time codes.
 
 ## What it does
 

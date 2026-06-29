@@ -16,6 +16,8 @@ Three layers (see [ADR-011](../../docs/decisions/ADR-011-user-journey-ledger.md)
 
 ## Workflow
 
+> **Run the first-run silently and in as few turns as possible — do NOT narrate.** The user must see ONLY, in this order: the welcome box (§0.5.1), the consent panel (§0.5.2), then — after handoff — intake's preamble and questions. **Never** print section numbers (`§0`, `§0.5`, `§1b`…), **never** announce steps ("I'll start with the silent check", "This is a genuine first run", "Consent given, running setup", "Handing off to intake", "Setup complete"), **never** describe what you're about to do. These `§`-labels are internal scaffolding, not a script to read aloud. Run the mechanical work (the Read check; the post-consent `mkdir` + `uname` + `platform.md` write) as **tight batched tool calls — one turn, no thinking-out-loud between them**. Every narrated line is a wasted Opus turn the user sits and waits on (this is why the first run felt slow). When in doubt: emit nothing.
+
 ### 0. NEW-vs-RETURNING check (silent, `Read`-only — the ONLY thing before any output)
 
 The only work allowed before the user sees anything is detecting whether this is a fresh install. Do it with the **`Read` tool — never Bash** (`test` / `ls` / `mkdir`). Reads of the memory dir never prompt, so this adds no permission gate; a Bash check here would fire a permission prompt *before* the welcome — exactly the premature-prompt bug we're removing.
@@ -52,7 +54,7 @@ The user's very first screen. **robintax — not intake — owns this surface no
    - On **Not now** → exit cleanly with one line (`No problem — run /robintax when you're ready.`). Do **not** start intake.
    - On **Yes** → continue ↓
 
-3. **Deferred setup (now that the user said yes).** These were the old silent §0 actions; they run here, post-consent:
+3. **Deferred setup (now that the user said yes) — run as ONE silent batched turn, no narration.** Do `mkdir -p ~/Downloads/RobinTax` and `uname` together (and write `platform.md` from the result), in a single turn — not three announced steps. These were the old silent §0 actions:
    - `mkdir -p ~/Downloads/RobinTax` — idempotent. The collection folder; everything `get-doc` saves lands here.
    - Detect platform with `uname` and record once at `<memory>/platform.md` (skip if it already exists). Use `uname` (not `node -e`) so the seeded `Bash(uname*)` grant covers it.
    - **Internal capability matrix** (routing only — never surface): macOS → Apple Reminders back the cohort/auto-recheck lifecycle + `split-screen.sh` arranges editor/browser; Windows/Linux → degraded (no OS reminders, no window split — see the Windows backend TODO at the bottom). Never print a "you're on macOS…" preamble.
