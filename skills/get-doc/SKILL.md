@@ -37,13 +37,25 @@ The very first `/get-doc` run in a fresh install needs the Playwriter Chrome ext
 
    It merges (never clobbers) `Bash(npx playwriter@latest *)`, the `replay` MCP tool (both plugin-namespaced and dev variants), and `Write(~/Downloads/RobinTax/**)` into `~/.claude/settings.json`. **No more "go run `/permissions` yourself."** This single `node` call may itself prompt once — that's fine, it's immediately after the user's explicit §00 consent. (Open item: whether the seeded perms take effect this session or the next; if next, the first `npx playwriter` falls back to one native "allow always".)
 
-1. **Setup doctor — show real state, never guess.** Run `"${CLAUDE_PLUGIN_ROOT:-.}/skills/get-doc/scripts/doctor.sh"` and relay its output. It prints each component's actual status + the exact next action for any ✗:
-   - **Node** present? **Chrome** present?
-   - **Relay** — the `smart-replay` MCP server auto-spawns the relay, but only *lazily on the first `replay` call*, and the Chrome extension needs it **already up** to connect. So the doctor **starts the relay now** (idempotent: probes port 19988, backgrounds `npx playwriter@latest serve --host 127.0.0.1` if down) *before* asking about the extension.
-   - **Extension** installed + connected? If not, the doctor prints the one-time steps — install link, then **quit Chrome fully (Cmd-Q) and reopen** (Chrome registers the extension only after a full restart), then click the icon. The yellow "controlled by automated software" banner is expected.
-   Never make the user interpret a green/red dot — the doctor states the next action in words.
+1. **Machine setup — one deterministic script, never hand-run infra.** Everything machine-side (deps, relay, connection) is owned by [`install_collect.sh`](scripts/install_collect.sh). You never run `npm`/`npx`/relay commands yourself, never interpret a green/red dot, and never call the `replay` MCP tool — the script does the work and returns an exit code; you turn that code into at most one human instruction. This kills two fresh-install bugs by design: deps are installed **synchronously** before use (no MCP-spawn-before-deps race), and this script is the **only** place that starts the relay (no multi-owner "4003 multiple extensions" ghost).
+
+   **a. Framing check.** `"${CLAUDE_PLUGIN_ROOT:-.}/skills/get-doc/scripts/install_collect.sh" 'paired?'` — exit **0** = the extension has paired here before (repeat run), exit **1** = first run.
+
+   **b. Prep (always, silent).** `install_collect.sh prep` — installs deps + starts one relay. Non-zero → relay/deps failed; relay the one-line stderr and stop.
+
+   **c. Extension.** The relay is up but needs the Playwriter Chrome extension attached to a tab. **On a first run, lead proactively** (framed as one-time setup, NOT an error — most first-time users don't have it yet):
+      > **One-time setup — connect your Chrome (once):**
+      > 1. Install the Playwriter extension: https://chromewebstore.google.com/detail/playwriter-mcp/jfeammnjpkecdekppnclgkkffahnhfhe
+      > 2. Quit Chrome **fully** (Cmd-Q) and reopen it — Chrome only registers the extension after a full restart.
+      > 3. Click the Playwriter puzzle icon on any tab. The yellow "controlled by automated software" banner is expected.
+      >
+      > Tell me **done** when that's set.
+
+      On a repeat run, skip this message — go straight to the check.
+
+   **d. Check.** `install_collect.sh check` — exit **0** = connected (marker written, preflight done, continue); exit **2** = extension still not attached → repeat the step-3 "click the icon" line once, wait for **done**, check again; exit **3** = relay unreachable → prep failed, relay the stderr.
 2. **Folder + platform (no prompt).** The `~/Downloads/RobinTax/` folder is created by the SessionStart hook — assume it exists; don't `mkdir` it (that would prompt). <!-- CONSENT §00: file I/O location — if this path changes, update §00 bullet 2. --> Also pick up the deferred platform detection: if `<memory>/platform.md` is missing, detect with `uname` and write it (the seeded `Bash(uname*)` grant covers this) — this is where the capability matrix first actually matters (reminders/split-screen).
-3. On subsequent runs (perms granted, extension paired, folder + platform recorded), the doctor comes back all-✓ and this whole preflight is silent.
+3. On subsequent runs (perms granted, extension paired, folder + platform recorded), `install_collect.sh setup` (prep + check in one call) passes on the first try and this whole preflight is silent.
 
 Per [ADR-001](../../docs/decisions/ADR-001-no-credential-proxy.md): the user owns all logins. The skill never types passwords. If a site needs login, you log in in your own Chrome; the skill polls for the dashboard signal and resumes.
 
@@ -89,9 +101,9 @@ First read `<memory>/journey.md` so you know this doc's current status and histo
 
 ### 2. PLAN
 
-**Warn before connecting (both paths, do this FIRST).** If the resolved doc file has a `## Login difficulty` section, relay it to the user **before the first connection** — before the first `goto` on the LLM path AND before invoking `replay` on the Smart Replay path. This is a heads-up, not a gate (no Y/N): the user should know a hard login is coming before the window pops up. Items the block flags as first-time-only, skip for users who've logged into that site before.
+**Warn before connecting (both paths, do this FIRST).** If the resolved doc file has a `## Login difficulty` section, relay it to the user **before the first connection** — before the first `goto` on the LLM path AND before running the flow on the Smart Replay path. This is a heads-up, not a gate (no Y/N): the user should know a hard login is coming before the window pops up. Items the block flags as first-time-only, skip for users who've logged into that site before.
 
-**First check Smart Replay.** Read [`Collector/skill/src/registry.ts`](../../Collector/skill/src/registry.ts)'s `DOC_TO_FLOW` map. If `<slug>` has an entry, **the plan is**: invoke the `mcp__smart-replay__replay` tool with `{site: <flow-key>}`. Announce in one line — *"Smart Replay flow exists for this doc — running it (no LLM)."* — and skip straight to EXECUTE. **Do not gate** with a Y/N prompt; the slash command itself is the consent (see [[feedback_approval_frequency]]). Don't ask the user to confirm a method when the cache is the method.
+**First check Smart Replay.** Read [`Collector/skill/src/registry.ts`](../../Collector/skill/src/registry.ts)'s `DOC_TO_FLOW` map. If `<slug>` has an entry, **the plan is**: run the flow via `install_collect.sh run <flow-key>`. Announce in one line — *"Smart Replay flow exists for this doc — running it (no LLM)."* — and skip straight to EXECUTE. **Do not gate** with a Y/N prompt; the slash command itself is the consent (see [[feedback_approval_frequency]]). Don't ask the user to confirm a method when the cache is the method.
 
 **Otherwise (no flow yet for this slug), pick a method from the table.** Default to the highest-confidence row with delivery=Immediate. Tell the user:
 - Which method
@@ -100,7 +112,7 @@ First read `<memory>/journey.md` so you know this doc's current status and histo
 
 ### 3. EXECUTE
 
-**Precondition — preflight before replay (issue #4).** **Never invoke `mcp__smart-replay__replay` (or start any playwriter session) until the First-run preflight has completed for this install** — the §00 consent gate, §0 permission seed, and §1 setup doctor. If you cannot confirm the preflight ran this install (e.g. you jumped straight here from a slash command), run it first. Skipping it is exactly the bug where `replay` fired before the extension/relay were verified.
+**Precondition — preflight before running any flow (issue #4).** **Never run `install_collect.sh run` (or start any playwriter session) until the First-run preflight has completed for this install** — the §00 consent gate, §0 permission seed, and §1 machine setup (a green `install_collect.sh check`). If you cannot confirm the preflight ran this install (e.g. you jumped straight here from a slash command), run it first. Skipping it is exactly the bug where the flow fired before the extension/relay were verified.
 
 **Three-way decision tree.** Pick exactly one based on PLAN:
 
@@ -113,15 +125,15 @@ First read `<memory>/journey.md` so you know this doc's current status and histo
 
 ---
 
-**Path A — Smart Replay.** Invoke `mcp__smart-replay__replay` with `{site: <flow-key>}`. The MCP server auto-spawns the Playwriter relay on first call, **focuses the Chrome app + tab and runs `split-screen.sh` for you** (`bringToFrontAndSplit()` in `run-flow.ts` — happens before the first step so the user sees the flow start), then streams per-step status. On `isError: false` → success: the saved file list is in the tool result. Skip ahead to REFLECT/WRITE.
+**Path A — Smart Replay.** Run `install_collect.sh run <flow-key>` via Bash. The runner **focuses the Chrome app + tab and runs `split-screen.sh` for you** (`bringToFrontAndSplit()` in `run-flow.ts` — happens before the first step so the user sees the flow start), then prints per-step status + the saved-file list to stdout. **Exit 0** → success: the saved files are in the output. Skip ahead to REFLECT/WRITE.
 
-**On `isError: true` — classify before falling back.** Read the error message. Two cases:
+**On non-zero exit (flow failed) — classify before falling back.** Read the printed transcript/error. Two cases:
 
 1. **Precondition failure** (most common). Telltales: the error mentions a step name like `wait for post-login signal`, `wait for dashboard`, or any `waitFor` timeout; OR the user wasn't on the site when the flow started. This is NOT a flow defect — the flow couldn't see what it expected because the user wasn't ready. Recovery (no LLM hand-driving, no new playwriter sessions):
    - One-line announce: *"Smart Replay timed out at `<stepName>` — likely waiting on you. Bringing Chrome forward; please log in / complete the action you need to do."*
    - Force-focus Chrome via Bash: `osascript -e 'tell application "Google Chrome" to activate'`
    - Tell the user explicitly what to do (log in, dismiss popup, etc.) and that you'll retry once they're done. Wait for their "ok" / "done" — don't busy-loop.
-   - **Re-invoke `mcp__smart-replay__replay` once.** The MCP holds nothing across calls and the user's tab state is now what the flow needs.
+   - **Re-run `install_collect.sh run <flow-key>` once.** It holds nothing across calls and the user's tab state is now what the flow needs.
    - If THAT also fails → proceed to case 2 (Path B).
 
 2. **Real flow defect** (selector throw, navigation error, anything that's not a wait-timeout). The cached flow is genuinely broken against the current DOM. This is **Path B — LLM-driven on the same live tab.** Announce *"Smart Replay step `<N>` failed: `<stepName>` — `<error>`. Falling back to LLM exploration on the live tab."* Then re-attach via the playwriter CLI to the same tab (the user's Chrome is intact — page wasn't closed) and resume from the current DOM. First action on resume: snapshot the page to learn where the broken flow left it. Don't `goto()` the start URL — the tab is already deep in the flow. **You do NOT need to re-run bringToFront + split-screen** — they already ran when the replay started.
@@ -130,7 +142,7 @@ The classify-before-fallback rule is load-bearing: skipping straight to LLM expl
 
 ---
 
-**Path C — LLM-driven from scratch (no flow exists for this slug).** This is the path for any doc that isn't in `DOC_TO_FLOW`. **Do NOT call `mcp__smart-replay__replay`** — there's nothing for it to run, and the tool will reject an unknown site key. Instead:
+**Path C — LLM-driven from scratch (no flow exists for this slug).** This is the path for any doc that isn't in `DOC_TO_FLOW`. **Do NOT run `install_collect.sh run`** — there's no flow for this slug, and it only accepts a known flow key. Instead:
 
 - Start a fresh playwriter CLI session (`npx playwriter@latest session new`).
 - Open the site listed in the playbook's "Where to obtain" prose.

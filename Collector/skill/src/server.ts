@@ -61,34 +61,16 @@ async function waitForRelayReady(deadline: number): Promise<boolean> {
 
 async function ensureRelayRunning(): Promise<void> {
   if (await isPortOpen(RELAY_HOST, RELAY_PORT)) return;
-  process.stderr.write(
-    `→ Playwriter relay not running on ${RELAY_HOST}:${RELAY_PORT} — spawning…\n`,
+  // The relay has a SINGLE owner: the get-doc skill's install_collect.sh.
+  // The MCP server no longer spawns its own — the old multi-owner setup
+  // (doctor.sh + this server + manual restarts all racing to bind :19988)
+  // produced duplicate extension connections and the "4003 multiple
+  // extensions" deadlock. If the relay isn't up by the time replay is called,
+  // the preflight simply wasn't run.
+  throw new Error(
+    `Playwriter relay is not running on ${RELAY_HOST}:${RELAY_PORT}. ` +
+      `Run the get-doc preflight first — install_collect.sh prep is the sole relay owner.`,
   );
-  relayChild = spawn(
-    "npx",
-    ["playwriter@latest", "serve", "--host", RELAY_HOST],
-    {
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
-    },
-  );
-  relayChild.stdout?.on("data", (b) =>
-    process.stderr.write(`[relay] ${b.toString()}`),
-  );
-  relayChild.stderr?.on("data", (b) =>
-    process.stderr.write(`[relay] ${b.toString()}`),
-  );
-  relayChild.once("exit", (code) => {
-    process.stderr.write(`[relay] exited with code ${code}\n`);
-    relayChild = null;
-  });
-  const ready = await waitForRelayReady(Date.now() + RELAY_READY_TIMEOUT_MS);
-  if (!ready) {
-    throw new Error(
-      `Playwriter relay failed to come up on ${RELAY_HOST}:${RELAY_PORT} within ${RELAY_READY_TIMEOUT_MS}ms. Check that 'npx playwriter@latest serve' works manually.`,
-    );
-  }
-  process.stderr.write(`→ Relay ready on ${RELAY_HOST}:${RELAY_PORT}\n`);
 }
 
 function shutdownRelay(): void {
